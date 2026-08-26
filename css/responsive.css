@@ -1,0 +1,162 @@
+/* ==========================================
+   MEDIA QUERIES PARA RESPONSIVIDADE
+   ========================================== */
+
+/* Telas grandes (desktop) */
+@media (min-width: 1024px) {
+    .app-main {
+        max-width: 1000px;
+        padding: var(--spacing-xl);
+    }
+    
+    .card-body {
+        padding: var(--spacing-xl);
+    }
+    
+    .info-item {
+        font-size: 1.1rem;
+    }
+    
+    .editable-value {
+        font-size: 1.2rem;
+    }
+}
+
+/* Tablets */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .app-main {
+        max-width: 800px;
+        padding: var(--spacing-lg);
+    }
+    
+    .card-body {
+        padding: var(--spacing-lg);
+    }
+}
+
+/* Celulares (mobile-first) */
+@media (max-width: 767px) {
+    .app-header {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+    
+    .app-title {
+        font-size: 1.2rem;
+    }
+    
+    .app-main {
+        padding: var(--spacing-sm);
+    }
+    
+    .scanner-container {
+        padding: var(--spacing-sm);
+    }
+    
+    .manual-input-group {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .btn-scan {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+    
+    .info-label {
+        min-width: auto;
+    }
+    
+    .info-value {
+        text-align: left;
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .editable-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+    
+    .editable-input {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .btn-save,
+    .btn-cancel {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .historico-header {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        align-items: flex-start;
+    }
+    
+    .historico-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .historico-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+}
+
+/* Celulares pequenos */
+@media (max-width: 375px) {
+    .app-title {
+        font-size: 1rem;
+    }
+    
+    .card-body {
+        padding: var(--spacing-md);
+    }
+    
+    .editable-item {
+        padding: var(--spacing-sm);
+    }
+    
+    .toast {
+        min-width: auto;
+        max-width: 90%;
+        margin: 0 auto;
+    }
+    
+    .toast-container {
+        right: 10px;
+        left: 10px;
+        align-items: center;
+    }
+}
+
+/* Orientação paisagem em celulares */
+@media (max-width: 767px) and (orientation: landscape) {
+    .app-main {
+        max-width: 100%;
+    }
+    
+    .scanner-container {
+        display: flex;
+        gap: var(--spacing-md);
+    }
+    
+    .manual-input-group {
+        flex: 1;
+        flex-direction: row;
+    }
+    
+    .search-group {
+        flex: 1;
+    }
+}
