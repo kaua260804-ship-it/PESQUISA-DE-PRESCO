@@ -230,7 +230,7 @@
         </section>
     </main>
 
-    <!-- Loading Spinner (APENAS UM) -->
+    <!-- Loading Spinner -->
     <div id="loadingSpinner" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
         <p class="loading-text">Carregando dados...</p>
@@ -242,11 +242,13 @@
     <!-- Biblioteca html5-qrcode -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     
-    <!-- Scripts do projeto -->
+    <!-- Scripts do projeto (ordem importante) -->
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/scanner.js"></script>
-    <script src="js/ui.js"></script>
+    <script src="js/ui-core.js"></script>
+    <script src="js/ui-produto.js"></script>
+    <script src="js/ui-historico.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>
