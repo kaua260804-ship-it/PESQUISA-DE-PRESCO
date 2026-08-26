@@ -1,7 +1,6 @@
 /**
  * API.JS
  * Comunicação com o Google Apps Script
- * Otimizado para grandes volumes de dados
  */
 
 class API {
@@ -43,19 +42,14 @@ class API {
                 throw new Error(data.message || 'Erro ao buscar dados');
             }
 
-            // Extrai o array de produtos da resposta
             const produtos = data.data || [];
             
-            // Verifica se é um array válido
             if (!Array.isArray(produtos)) {
-                console.error('Resposta da API não contém um array válido');
                 throw new Error('Formato de resposta inválido');
             }
 
-            // Constrói índice de busca
             this.construirIndice(produtos);
             
-            // Salva no cache (limitado)
             if (produtos.length > 0) {
                 this.cache.set(produtos.slice(0, CONFIG.CACHE_MAX_PRODUTOS));
             }
@@ -83,11 +77,9 @@ class API {
                 porDescricao: new Map()
             };
             
-            // Constrói índices de forma otimizada
             for (let i = 0; i < produtos.length; i++) {
                 const produto = produtos[i];
                 
-                // Índice por SEQ PROD
                 if (produto.seqProd) {
                     const seqProd = String(produto.seqProd).toLowerCase();
                     if (!this.indiceBusca.porSeqProd.has(seqProd)) {
@@ -95,7 +87,6 @@ class API {
                     }
                 }
                 
-                // Índice por código de acesso
                 if (produto.codAcesso) {
                     const codAcesso = String(produto.codAcesso).toLowerCase();
                     if (!this.indiceBusca.porCodAcesso.has(codAcesso)) {
@@ -103,7 +94,6 @@ class API {
                     }
                 }
                 
-                // Índice por descrição (primeira palavra)
                 if (produto.descricao) {
                     const primeiraPalavra = produto.descricao.toLowerCase().split(/\s+/)[0];
                     if (primeiraPalavra && primeiraPalavra.length >= 2) {
@@ -111,7 +101,7 @@ class API {
                             this.indiceBusca.porDescricao.set(primeiraPalavra, []);
                         }
                         const lista = this.indiceBusca.porDescricao.get(primeiraPalavra);
-                        if (lista.length < 100) { // Limita lista por palavra
+                        if (lista.length < 100) {
                             lista.push(produto);
                         }
                     }
@@ -137,12 +127,10 @@ class API {
             
             const codigoNormalizado = String(codigo).trim().toLowerCase();
             
-            // Busca exata por código de acesso
             if (this.indiceBusca.porCodAcesso.has(codigoNormalizado)) {
                 return this.indiceBusca.porCodAcesso.get(codigoNormalizado);
             }
             
-            // Busca exata por SEQ PROD
             if (this.indiceBusca.porSeqProd.has(codigoNormalizado)) {
                 return this.indiceBusca.porSeqProd.get(codigoNormalizado);
             }
@@ -170,7 +158,6 @@ class API {
             const resultados = [];
             const resultadosSet = new Set();
             
-            // Busca por código de acesso
             for (let [key, produto] of this.indiceBusca.porCodAcesso) {
                 if (key.includes(termoNormalizado)) {
                     if (!resultadosSet.has(produto.seqProd)) {
@@ -181,28 +168,10 @@ class API {
                 }
             }
             
-            // Busca por SEQ PROD
             if (resultados.length < limite) {
                 for (let [key, produto] of this.indiceBusca.porSeqProd) {
                     if (key.includes(termoNormalizado)) {
                         if (!resultadosSet.has(produto.seqProd)) {
-                            resultadosSet.add(produto.seqProd);
-                            resultados.push(produto);
-                            if (resultados.length >= limite) break;
-                        }
-                    }
-                }
-            }
-            
-            // Busca por descrição
-            if (resultados.length < limite) {
-                const primeiraPalavra = termoNormalizado.split(/\s+/)[0];
-                if (this.indiceBusca.porDescricao.has(primeiraPalavra)) {
-                    const produtosPalavra = this.indiceBusca.porDescricao.get(primeiraPalavra);
-                    for (let produto of produtosPalavra) {
-                        if (produto.descricao && 
-                            produto.descricao.toLowerCase().includes(termoNormalizado) &&
-                            !resultadosSet.has(produto.seqProd)) {
                             resultadosSet.add(produto.seqProd);
                             resultados.push(produto);
                             if (resultados.length >= limite) break;
@@ -228,7 +197,6 @@ class API {
     async atualizarCampo(seqProd, campo, valor) {
         try {
             const url = `${this.baseUrl}?action=atualizar&seqProd=${encodeURIComponent(seqProd)}&campo=${encodeURIComponent(campo)}&valor=${encodeURIComponent(valor)}`;
-            console.log('Atualizando campo...');
             
             const response = await fetch(url);
             
@@ -241,8 +209,7 @@ class API {
             if (data.success === false) {
                 throw new Error(data.message || 'Erro ao atualizar');
             }
-
-            console.log('Campo atualizado com sucesso');
+            
             return data;
         } catch (error) {
             console.error('Erro ao atualizar campo:', error);
@@ -255,10 +222,6 @@ class API {
  * Gerenciador de Cache
  */
 class CacheManager {
-    /**
-     * Obtém dados do cache
-     * @returns {Array|null} Dados cacheados ou null
-     */
     get() {
         try {
             const cached = localStorage.getItem(CONFIG.CACHE_KEY);
@@ -270,7 +233,6 @@ class CacheManager {
             const { data, timestamp } = JSON.parse(cached);
             const now = Date.now();
             
-            // Verifica se o cache expirou
             if (now - timestamp > CONFIG.CACHE_TTL) {
                 this.clear();
                 return null;
@@ -283,10 +245,6 @@ class CacheManager {
         }
     }
 
-    /**
-     * Salva dados no cache
-     * @param {Array} data - Dados a serem cacheados
-     */
     set(data) {
         try {
             const cacheData = {
@@ -296,18 +254,14 @@ class CacheManager {
             
             const jsonString = JSON.stringify(cacheData);
             
-            // Verifica se o tamanho é aceitável
             if (jsonString.length < CONFIG.STORAGE_MAX_BYTES) {
                 localStorage.setItem(CONFIG.CACHE_KEY, jsonString);
                 console.log(`Cache salvo com ${data.length} produtos`);
             } else {
-                // Tenta salvar metade
                 const metade = Math.floor(data.length / 2);
                 if (metade > 100) {
-                    console.log(`Cache muito grande, salvando ${metade} produtos`);
                     this.set(data.slice(0, metade));
                 } else {
-                    console.warn('Cache desativado - dados muito grandes');
                     this.clear();
                 }
             }
@@ -317,9 +271,6 @@ class CacheManager {
         }
     }
 
-    /**
-     * Limpa o cache
-     */
     clear() {
         try {
             localStorage.removeItem(CONFIG.CACHE_KEY);

@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Carrega dados dos produtos
         await ui.carregarDados();
         
+        // Garante que o loading está escondido
+        ui.showLoading(false);
+        
         // Foca no input de código
         document.getElementById('inputCodigo').focus();
         
@@ -33,11 +36,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Mostra mensagem de boas-vindas
         setTimeout(() => {
-            ui.showToast('Sistema pronto para uso!', 'info');
-        }, 1000);
+            ui.showToast('Sistema pronto para uso!', 'success');
+        }, 500);
         
     } catch (error) {
         console.error('Erro ao inicializar sistema:', error);
+        ui.showLoading(false);
         ui.showToast('Erro ao inicializar sistema!', 'error');
     }
 });
@@ -45,11 +49,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Tratamento global de erros
 window.addEventListener('error', (event) => {
     console.error('Erro global:', event.error);
+    // Garante que o loading é escondido em caso de erro
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.classList.add('hidden');
+    }
 });
 
 // Tratamento de promessas não capturadas
 window.addEventListener('unhandledrejection', (event) => {
     console.error('Promessa não capturada:', event.reason);
+    // Garante que o loading é escondido
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.classList.add('hidden');
+    }
 });
 
 // Previne zoom em inputs no iOS

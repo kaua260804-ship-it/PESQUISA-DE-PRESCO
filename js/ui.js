@@ -12,6 +12,7 @@ class UI {
         this.isEditando = false;
         this.scannerAtivo = false;
         this.buscaTimeout = null;
+        this.isLoading = false;
     }
 
     /**
@@ -51,7 +52,7 @@ class UI {
             
             this.buscaTimeout = setTimeout(() => {
                 this.buscarProdutos(termo);
-            }, 300); // Aguarda 300ms após parar de digitar
+            }, 300);
         });
         
         inputBusca.addEventListener('focus', () => {
@@ -164,21 +165,7 @@ class UI {
                 document.getElementById('inputCodigo').value = '';
                 document.getElementById('inputCodigo').focus();
             } else {
-                // Se não encontrou localmente, mostra mensagem
                 this.showToast('Produto não encontrado!', 'warning');
-                
-                // Tenta buscar na API (comentado para performance)
-                /*
-                this.showLoading(true);
-                produto = await api.buscarProduto(codigo);
-                this.showLoading(false);
-                
-                if (produto) {
-                    this.exibirProduto(produto);
-                    this.adicionarHistorico(produto);
-                    this.showToast('Produto encontrado!', 'success');
-                }
-                */
             }
         } catch (error) {
             console.error('Erro ao processar código:', error);
@@ -207,11 +194,12 @@ class UI {
         this.atualizarDisplayEditaveis(produto);
         
         // Mostra o card
-        document.getElementById('produtoCard').classList.remove('hidden');
+        const card = document.getElementById('produtoCard');
+        card.classList.remove('hidden');
         
         // Scroll até o card (mobile)
         setTimeout(() => {
-            document.getElementById('produtoCard').scrollIntoView({ 
+            card.scrollIntoView({ 
                 behavior: 'smooth', 
                 block: 'start' 
             });
@@ -367,18 +355,15 @@ class UI {
         
         if (scannerArea.classList.contains('hidden')) {
             try {
-                // Verifica se tem câmera
                 const temCamera = await scanner.hasCamera();
                 if (!temCamera) {
                     this.showToast('Dispositivo não possui câmera!', 'error');
                     return;
                 }
                 
-                // Mostra área do scanner
                 scannerArea.classList.remove('hidden');
                 this.scannerAtivo = true;
                 
-                // Inicializa scanner
                 await scanner.initialize('qr-reader');
                 await scanner.start((codigo) => {
                     this.processarCodigo(codigo);
@@ -423,14 +408,7 @@ class UI {
             return;
         }
         
-        console.time('Busca');
-        
-        // Usa busca local otimizada
         const resultados = api.buscarProdutosLocal(termo, CONFIG.LIMITE_BUSCA);
-        
-        console.timeEnd('Busca');
-        console.log(`Encontrados: ${resultados.length} resultados para "${termo}"`);
-        
         this.exibirResultadosBusca(resultados);
     }
 
@@ -447,15 +425,13 @@ class UI {
             container.innerHTML = '<div class="search-result-item">Nenhum produto encontrado</div>';
         } else {
             const html = resultados.map(produto => {
-                // Usa data attribute para armazenar o seqProd
                 const seqProd = produto.seqProd || '';
                 
                 return `
                     <div class="search-result-item" data-seqprod="${seqProd}">
                         <strong>${produto.seqProd || 'N/A'}</strong> - ${produto.descricao || 'Sem descrição'}
                         <div style="font-size: 0.9rem; color: #666;">
-                            ${produto.codAcesso ? 'Cód: ' + produto.codAcesso : 'Sem código'} | 
-                            ${produto.categoria || 'Sem categoria'}
+                            ${produto.codAcesso ? 'Cód: ' + produto.codAcesso : 'Sem código'}
                         </div>
                     </div>
                 `;
@@ -463,7 +439,6 @@ class UI {
             
             container.innerHTML = html;
             
-            // Adiciona event listeners
             container.querySelectorAll('.search-result-item[data-seqprod]').forEach(item => {
                 item.addEventListener('click', () => {
                     const seqProd = item.dataset.seqprod;
@@ -489,14 +464,11 @@ class UI {
             id: Date.now()
         };
         
-        // Verifica se o produto já está no histórico (evita duplicatas consecutivas)
         if (this.historico.length > 0 && this.historico[0].seqProd === itemHistorico.seqProd) {
-            // Atualiza timestamp se for o mesmo produto
             this.historico[0].timestamp = itemHistorico.timestamp;
         } else {
             this.historico.unshift(itemHistorico);
             
-            // Limita histórico a 50 itens
             if (this.historico.length > 50) {
                 this.historico.pop();
             }
@@ -535,7 +507,6 @@ class UI {
             `;
         }).join('');
         
-        // Adiciona event listeners
         container.querySelectorAll('.historico-item[data-seqprod]').forEach(item => {
             item.addEventListener('click', () => {
                 const seqProd = item.dataset.seqprod;
@@ -598,7 +569,7 @@ class UI {
         }
         
         try {
-            let csv = '\uFEFF'; // BOM para UTF-8
+            let csv = '\uFEFF';
             csv += 'Data;Hora;SEQ PROD;Descrição\n';
             
             this.historico.forEach(item => {
@@ -630,7 +601,6 @@ class UI {
             return;
         }
         
-        // Cria uma janela de impressão com o histórico
         const printWindow = window.open('', '_blank', 'width=800,height=600');
         
         if (!printWindow) {
@@ -656,33 +626,12 @@ class UI {
             <head>
                 <title>Histórico de Leituras</title>
                 <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        padding: 20px;
-                    }
-                    h1 {
-                        color: #1a73e8;
-                        font-size: 24px;
-                        margin-bottom: 20px;
-                    }
-                    table {
-                        width: 100%;
-                        border-collapse: collapse;
-                    }
-                    th, td {
-                        padding: 8px;
-                        text-align: left;
-                        border-bottom: 1px solid #ddd;
-                    }
-                    th {
-                        background-color: #f2f2f2;
-                        font-weight: bold;
-                    }
-                    .footer {
-                        margin-top: 20px;
-                        font-size: 12px;
-                        color: #666;
-                    }
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    h1 { color: #6C63FF; font-size: 24px; margin-bottom: 20px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    .footer { margin-top: 20px; font-size: 12px; color: #666; }
                 </style>
             </head>
             <body>
@@ -696,9 +645,7 @@ class UI {
                             <th>Descrição</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${historicoHTML}
-                    </tbody>
+                    <tbody>${historicoHTML}</tbody>
                 </table>
                 <div class="footer">
                     Gerado em: ${new Date().toLocaleString('pt-BR')} | 
@@ -740,12 +687,20 @@ class UI {
      */
     showLoading(show) {
         const spinner = document.getElementById('loadingSpinner');
-        if (spinner) {
-            if (show) {
-                spinner.classList.remove('hidden');
-            } else {
-                spinner.classList.add('hidden');
-            }
+        
+        if (!spinner) {
+            console.error('Elemento loadingSpinner não encontrado');
+            return;
+        }
+        
+        this.isLoading = show;
+        
+        if (show) {
+            spinner.classList.remove('hidden');
+            console.log('Loading mostrado');
+        } else {
+            spinner.classList.add('hidden');
+            console.log('Loading escondido');
         }
     }
 
@@ -773,9 +728,8 @@ class UI {
         
         container.appendChild(toast);
         
-        // Remove após duração
         setTimeout(() => {
-            toast.style.animation = 'slideOut 0.3s ease-in';
+            toast.style.animation = 'slideOutRight 0.3s ease-in';
             setTimeout(() => {
                 if (toast.parentNode) {
                     container.removeChild(toast);

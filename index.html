@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1a73e8">
+    <meta name="theme-color" content="#6C63FF">
     <meta name="description" content="Sistema de Pesquisa de Preço com Leitor de Código de Barras">
     <title>Pesquisa de Preço - Leitor de Código de Barras</title>
     
     <!-- Font Awesome para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- CSS do projeto -->
     <link rel="stylesheet" href="css/style.css">
@@ -47,6 +50,7 @@
                     >
                     <button id="btnScan" class="btn-scan" title="Escanear código">
                         <i class="fas fa-camera"></i>
+                        Escanear
                     </button>
                 </div>
 
@@ -126,7 +130,7 @@
                             </button>
                         </div>
                         <div class="editable-value" id="displayNossoPreco"></div>
-                        <div class="editable-input hidden">
+                        <div class="editable-input hidden" data-campo="nossoPreco">
                             <input type="number" id="inputNossoPreco" step="0.01" min="0">
                             <button class="btn-save" data-campo="nossoPreco">
                                 <i class="fas fa-check"></i> Salvar
@@ -149,7 +153,7 @@
                             </button>
                         </div>
                         <div class="editable-value" id="displayPrecoConcorrente"></div>
-                        <div class="editable-input hidden">
+                        <div class="editable-input hidden" data-campo="precoConcorrente">
                             <input type="number" id="inputPrecoConcorrente" step="0.01" min="0">
                             <button class="btn-save" data-campo="precoConcorrente">
                                 <i class="fas fa-check"></i> Salvar
@@ -172,7 +176,7 @@
                             </button>
                         </div>
                         <div class="editable-value" id="displayObservacao"></div>
-                        <div class="editable-input hidden">
+                        <div class="editable-input hidden" data-campo="observacao">
                             <textarea id="inputObservacao" rows="3"></textarea>
                             <button class="btn-save" data-campo="observacao">
                                 <i class="fas fa-check"></i> Salvar
@@ -208,12 +212,15 @@
                 <div class="historico-actions">
                     <button id="btnExportarCSV" class="btn-action" title="Exportar CSV">
                         <i class="fas fa-file-csv"></i>
+                        CSV
                     </button>
                     <button id="btnExportarPDF" class="btn-action" title="Exportar PDF">
                         <i class="fas fa-file-pdf"></i>
+                        PDF
                     </button>
                     <button id="btnLimparHistorico" class="btn-action danger" title="Limpar Histórico">
                         <i class="fas fa-trash"></i>
+                        Limpar
                     </button>
                 </div>
             </div>
@@ -223,8 +230,8 @@
         </section>
     </main>
 
-    <!-- Loading Spinner -->
-    <div id="loadingSpinner" class="loading-overlay hidden">
+    <!-- Loading Spinner (APENAS UM) -->
+    <div id="loadingSpinner" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
         <p class="loading-text">Carregando dados...</p>
     </div>

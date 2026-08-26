@@ -5,7 +5,7 @@
 /* Telas grandes (desktop) */
 @media (min-width: 1024px) {
     .app-main {
-        max-width: 1000px;
+        max-width: 900px;
         padding: var(--spacing-xl);
     }
     
@@ -14,18 +14,18 @@
     }
     
     .info-item {
-        font-size: 1.1rem;
+        font-size: var(--font-size-md);
     }
     
     .editable-value {
-        font-size: 1.2rem;
+        font-size: var(--font-size-lg);
     }
 }
 
 /* Tablets */
 @media (min-width: 768px) and (max-width: 1023px) {
     .app-main {
-        max-width: 800px;
+        max-width: 700px;
         padding: var(--spacing-lg);
     }
     
@@ -37,11 +37,11 @@
 /* Celulares (mobile-first) */
 @media (max-width: 767px) {
     .app-header {
-        padding: var(--spacing-sm) var(--spacing-md);
+        padding: var(--spacing-md);
     }
     
     .app-title {
-        font-size: 1.2rem;
+        font-size: var(--font-size-lg);
     }
     
     .app-main {
@@ -49,7 +49,8 @@
     }
     
     .scanner-container {
-        padding: var(--spacing-sm);
+        padding: var(--spacing-md);
+        border-radius: var(--border-radius-md);
     }
     
     .manual-input-group {
@@ -70,12 +71,14 @@
     
     .info-label {
         min-width: auto;
+        font-size: var(--font-size-xs);
     }
     
     .info-value {
         text-align: left;
         margin-left: 0;
         width: 100%;
+        font-size: var(--font-size-md);
     }
     
     .editable-header {
@@ -111,12 +114,30 @@
         align-items: flex-start;
         gap: var(--spacing-xs);
     }
+    
+    .historico-item .produto-hora {
+        text-align: left;
+    }
+    
+    .toast-container {
+        top: auto;
+        bottom: 20px;
+        right: 10px;
+        left: 10px;
+        align-items: center;
+    }
+    
+    .toast {
+        min-width: auto;
+        max-width: 100%;
+        width: 100%;
+    }
 }
 
 /* Celulares pequenos */
 @media (max-width: 375px) {
     .app-title {
-        font-size: 1rem;
+        font-size: var(--font-size-md);
     }
     
     .card-body {
@@ -127,16 +148,8 @@
         padding: var(--spacing-sm);
     }
     
-    .toast {
-        min-width: auto;
-        max-width: 90%;
-        margin: 0 auto;
-    }
-    
-    .toast-container {
-        right: 10px;
-        left: 10px;
-        align-items: center;
+    .produto-titulo {
+        font-size: var(--font-size-lg);
     }
 }
 
@@ -158,5 +171,27 @@
     
     .search-group {
         flex: 1;
+    }
+}
+
+/* Dark mode (opcional) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-primary: #1A1A2E;
+        --bg-white: #2A2A3E;
+        --text-primary: #FFFFFF;
+        --text-secondary: #B0B0C0;
+        --text-muted: #808090;
+        --border-color: #3A3A4E;
+    }
+    
+    .codigo-input,
+    .search-input {
+        background: #3A3A4E;
+        color: #FFFFFF;
+    }
+    
+    .editable-value {
+        background: #3A3A4E;
     }
 }
