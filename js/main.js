@@ -6,6 +6,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Iniciando Pesquisa de Preço...');
     
+    // Garante que o loading está escondido inicialmente
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    if (loadingSpinner) {
+        loadingSpinner.style.display = 'none';
+    }
+    
     try {
         // Inicializa a UI
         ui.initialize();
@@ -16,21 +22,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Garante que o loading está escondido
         ui.showLoading(false);
         
-        // Foca no input de código
-        document.getElementById('inputCodigo').focus();
-        
-        // Configura autofocus contínuo
-        document.addEventListener('click', () => {
-            const inputCodigo = document.getElementById('inputCodigo');
-            const inputBusca = document.getElementById('inputBusca');
-            
-            // Se não está editando, foca no input de código
-            if (!ui.isEditando && 
-                document.activeElement !== inputBusca &&
-                !document.querySelector('.editable-input:not(.hidden)')) {
-                inputCodigo.focus();
-            }
-        });
+        // Foca no input de código APENAS UMA VEZ
+        const inputCodigo = document.getElementById('inputCodigo');
+        if (inputCodigo) {
+            inputCodigo.focus({ preventScroll: true }); // Não faz scroll
+        }
         
         console.log('Sistema iniciado com sucesso!');
         
@@ -46,23 +42,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// REMOVIDO: Event listener que causava scroll automático
+// Agora só foca no input quando o usuário clica diretamente nele
+
 // Tratamento global de erros
 window.addEventListener('error', (event) => {
     console.error('Erro global:', event.error);
-    // Garante que o loading é escondido em caso de erro
     const spinner = document.getElementById('loadingSpinner');
     if (spinner) {
-        spinner.classList.add('hidden');
+        spinner.style.display = 'none';
     }
 });
 
 // Tratamento de promessas não capturadas
 window.addEventListener('unhandledrejection', (event) => {
     console.error('Promessa não capturada:', event.reason);
-    // Garante que o loading é escondido
     const spinner = document.getElementById('loadingSpinner');
     if (spinner) {
-        spinner.classList.add('hidden');
+        spinner.style.display = 'none';
     }
 });
 
@@ -72,3 +69,12 @@ document.addEventListener('touchstart', (e) => {
         e.target.style.fontSize = '16px';
     }
 }, { passive: true });
+
+// Fallback: esconde loading após 5 segundos
+setTimeout(() => {
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner && spinner.style.display !== 'none') {
+        console.warn('Forçando esconder loading após timeout');
+        spinner.style.display = 'none';
+    }
+}, 5000);
