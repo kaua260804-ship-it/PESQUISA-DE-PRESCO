@@ -161,9 +161,10 @@ class UI {
                 this.adicionarHistorico(produto);
                 this.showToast('Produto encontrado!', 'success');
                 
-                // Limpa o input para próxima leitura
-                document.getElementById('inputCodigo').value = '';
-                document.getElementById('inputCodigo').focus();
+                // Limpa o input para próxima leitura (sem scroll)
+                const inputCodigo = document.getElementById('inputCodigo');
+                inputCodigo.value = '';
+                // NÃO foca automaticamente para evitar scroll
             } else {
                 this.showToast('Produto não encontrado!', 'warning');
             }
@@ -174,7 +175,7 @@ class UI {
     }
 
     /**
-     * Exibe um produto no card
+     * Exibe um produto no card (SEM SCROLL AUTOMÁTICO)
      * @param {Object} produto - Dados do produto
      */
     exibirProduto(produto) {
@@ -193,17 +194,11 @@ class UI {
         // Preenche campos editáveis
         this.atualizarDisplayEditaveis(produto);
         
-        // Mostra o card
+        // Mostra o card SEM scroll automático
         const card = document.getElementById('produtoCard');
         card.classList.remove('hidden');
         
-        // Scroll até o card (mobile)
-        setTimeout(() => {
-            card.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'start' 
-            });
-        }, 100);
+        // REMOVIDO: Scroll automático que causava problemas
     }
 
     /**
@@ -257,8 +252,8 @@ class UI {
                 const valorAtual = this.produtoAtual[campo];
                 inputElement.value = valorAtual || '';
                 
-                // Foca no elemento
-                inputElement.focus();
+                // Foca no elemento (com preventScroll)
+                inputElement.focus({ preventScroll: true });
             }
         }
     }
@@ -343,8 +338,7 @@ class UI {
         this.produtoAtual = null;
         this.isEditando = false;
         
-        // Foca no input de código
-        document.getElementById('inputCodigo').focus();
+        // NÃO foca automaticamente para evitar scroll
     }
 
     /**
@@ -355,15 +349,18 @@ class UI {
         
         if (scannerArea.classList.contains('hidden')) {
             try {
+                // Verifica se tem câmera
                 const temCamera = await scanner.hasCamera();
                 if (!temCamera) {
                     this.showToast('Dispositivo não possui câmera!', 'error');
                     return;
                 }
                 
+                // Mostra área do scanner
                 scannerArea.classList.remove('hidden');
                 this.scannerAtivo = true;
                 
+                // Inicializa scanner
                 await scanner.initialize('qr-reader');
                 await scanner.start((codigo) => {
                     this.processarCodigo(codigo);
@@ -408,7 +405,14 @@ class UI {
             return;
         }
         
+        console.time('Busca');
+        
+        // Usa busca local otimizada
         const resultados = api.buscarProdutosLocal(termo, CONFIG.LIMITE_BUSCA);
+        
+        console.timeEnd('Busca');
+        console.log(`Encontrados: ${resultados.length} resultados para "${termo}"`);
+        
         this.exibirResultadosBusca(resultados);
     }
 
@@ -439,6 +443,7 @@ class UI {
             
             container.innerHTML = html;
             
+            // Adiciona event listeners
             container.querySelectorAll('.search-result-item[data-seqprod]').forEach(item => {
                 item.addEventListener('click', () => {
                     const seqProd = item.dataset.seqprod;
@@ -464,11 +469,14 @@ class UI {
             id: Date.now()
         };
         
+        // Verifica se o produto já está no histórico (evita duplicatas consecutivas)
         if (this.historico.length > 0 && this.historico[0].seqProd === itemHistorico.seqProd) {
+            // Atualiza timestamp se for o mesmo produto
             this.historico[0].timestamp = itemHistorico.timestamp;
         } else {
             this.historico.unshift(itemHistorico);
             
+            // Limita histórico a 50 itens
             if (this.historico.length > 50) {
                 this.historico.pop();
             }
@@ -507,6 +515,7 @@ class UI {
             `;
         }).join('');
         
+        // Adiciona event listeners
         container.querySelectorAll('.historico-item[data-seqprod]').forEach(item => {
             item.addEventListener('click', () => {
                 const seqProd = item.dataset.seqprod;
@@ -569,7 +578,7 @@ class UI {
         }
         
         try {
-            let csv = '\uFEFF';
+            let csv = '\uFEFF'; // BOM para UTF-8
             csv += 'Data;Hora;SEQ PROD;Descrição\n';
             
             this.historico.forEach(item => {
@@ -601,6 +610,7 @@ class UI {
             return;
         }
         
+        // Cria uma janela de impressão com o histórico
         const printWindow = window.open('', '_blank', 'width=800,height=600');
         
         if (!printWindow) {
@@ -626,12 +636,33 @@ class UI {
             <head>
                 <title>Histórico de Leituras</title>
                 <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; }
-                    h1 { color: #6C63FF; font-size: 24px; margin-bottom: 20px; }
-                    table { width: 100%; border-collapse: collapse; }
-                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-                    th { background-color: #f2f2f2; font-weight: bold; }
-                    .footer { margin-top: 20px; font-size: 12px; color: #666; }
+                    body {
+                        font-family: Arial, sans-serif;
+                        padding: 20px;
+                    }
+                    h1 {
+                        color: #6C63FF;
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+                    th, td {
+                        padding: 8px;
+                        text-align: left;
+                        border-bottom: 1px solid #ddd;
+                    }
+                    th {
+                        background-color: #f2f2f2;
+                        font-weight: bold;
+                    }
+                    .footer {
+                        margin-top: 20px;
+                        font-size: 12px;
+                        color: #666;
+                    }
                 </style>
             </head>
             <body>
@@ -645,7 +676,9 @@ class UI {
                             <th>Descrição</th>
                         </tr>
                     </thead>
-                    <tbody>${historicoHTML}</tbody>
+                    <tbody>
+                        ${historicoHTML}
+                    </tbody>
                 </table>
                 <div class="footer">
                     Gerado em: ${new Date().toLocaleString('pt-BR')} | 
@@ -696,10 +729,10 @@ class UI {
         this.isLoading = show;
         
         if (show) {
-            spinner.classList.remove('hidden');
+            spinner.style.display = 'flex';
             console.log('Loading mostrado');
         } else {
-            spinner.classList.add('hidden');
+            spinner.style.display = 'none';
             console.log('Loading escondido');
         }
     }
@@ -728,6 +761,7 @@ class UI {
         
         container.appendChild(toast);
         
+        // Remove após duração
         setTimeout(() => {
             toast.style.animation = 'slideOutRight 0.3s ease-in';
             setTimeout(() => {
