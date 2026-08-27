@@ -21,6 +21,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     console.log('Usuário autenticado, carregando aplicação...');
     
+    // Mostra elementos da aplicação
+    document.getElementById('appHeader').style.display = 'block';
+    document.getElementById('appMain').style.display = 'block';
+    
+    // Adiciona evento de logout
+    document.getElementById('btnLogout').addEventListener('click', () => {
+        if (confirm('Deseja sair do sistema?')) {
+            auth.logout();
+        }
+    });
+    
     try {
         // Inicializa a UI
         ui.initialize();
