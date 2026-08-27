@@ -12,24 +12,29 @@ Object.assign(UI.prototype, {
             this.showLoading(true);
             
             const codigoLimpo = codigo.trim();
+            console.log('Processando código:', codigoLimpo);
             
             // Tenta buscar por EAN primeiro
             let produto = await api.buscarPorEAN(codigoLimpo);
             
             // Se não encontrou por EAN, tenta por SEQ
             if (!produto) {
+                console.log('Não encontrado por EAN, tentando por SEQ...');
                 produto = await api.buscarPorSeq(codigoLimpo);
             }
             
             this.showLoading(false);
             
             if (produto) {
+                console.log('Produto encontrado:', produto);
                 this.exibirProduto(produto);
                 this.adicionarHistorico(produto);
                 this.showToast('Produto encontrado!', 'success');
                 
-                document.getElementById('inputCodigo').value = '';
+                const inputCodigo = document.getElementById('inputCodigo');
+                if (inputCodigo) inputCodigo.value = '';
             } else {
+                console.log('Produto não encontrado');
                 this.showToast('Produto não encontrado!', 'warning');
             }
         } catch (error) {
@@ -53,12 +58,6 @@ Object.assign(UI.prototype, {
         document.getElementById('produtoSubgrupo').textContent = produto.divisao || 'N/A';
         document.getElementById('produtoTipoCodigo').textContent = produto.tipoCodigo || 'N/A';
         document.getElementById('produtoCodAcesso').textContent = produto.codAcesso || 'N/A';
-        
-        // Mostra SEQ FML se existir
-        const seqFmlElement = document.getElementById('produtoSeqFml');
-        if (seqFmlElement) {
-            seqFmlElement.textContent = produto.seqFml || 'N/A';
-        }
         
         this.atualizarDisplayEditaveis(produto);
         
@@ -210,7 +209,10 @@ Object.assign(UI.prototype, {
             return;
         }
         
+        this.showLoading(true);
         const resultados = await api.buscarPorDescricao(termo);
+        this.showLoading(false);
+        
         this.exibirResultadosBusca(resultados);
     },
 
@@ -229,6 +231,7 @@ Object.assign(UI.prototype, {
                     <strong>${produto.seqProd || 'N/A'}</strong> - ${produto.desc || 'Sem descrição'}
                     <div style="font-size: 0.9rem; color: #666;">
                         ${produto.codAcesso ? 'EAN: ' + produto.codAcesso : ''}
+                        ${produto.seqFml ? ' | FML: ' + produto.seqFml : ''}
                     </div>
                 </div>
             `).join('');
