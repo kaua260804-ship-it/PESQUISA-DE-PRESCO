@@ -4,7 +4,7 @@
  */
 
 const CONFIG = {
-    // URL do Google Apps Script
+    // URL do Google Apps Script - ATUALIZADA
     APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxxnwpuKSC7pRINbV8g9CZWYPhJXlAbUnSGSXJGe2p82nzATMPG30Vr0eVIkIlItwNeVw/exec',
     
     // Configurações de autenticação
