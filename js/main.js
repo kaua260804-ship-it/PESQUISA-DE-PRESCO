@@ -53,3 +53,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.showToast('Erro ao inicializar sistema!', 'error');
     }
 });
+
+// Tratamento global de erros
+window.addEventListener('error', (event) => {
+    console.error('Erro global:', event.error);
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.style.display = 'none';
+    }
+});
+
+// Tratamento de promessas não capturadas
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Promessa não capturada:', event.reason);
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.style.display = 'none';
+    }
+});
+
+// Previne zoom em inputs no iOS
+document.addEventListener('touchstart', (e) => {
+    if (e.target.tagName === 'INPUT' && e.target.type === 'text') {
+        e.target.style.fontSize = '16px';
+    }
+}, { passive: true });
