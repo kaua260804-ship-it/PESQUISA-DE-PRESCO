@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#6C63FF">
-    <meta name="description" content="Sistema de Pesquisa de Preço com Leitor de Código de Barras">
-    <title>Pesquisa de Preço - Leitor de Código de Barras</title>
+    <meta name="description" content="Sistema de Pesquisa de Preço com Leitor de Código de Barras - Área Restrita">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Pesquisa de Preço - Área Restrita</title>
     
     <!-- Font Awesome para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -17,23 +18,29 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
-    <!-- Cabeçalho -->
-    <header class="app-header">
+    <!-- Cabeçalho (escondido até login) -->
+    <header class="app-header" id="appHeader" style="display: none;">
         <div class="header-container">
             <h1 class="app-title">
                 <i class="fas fa-barcode"></i>
                 Pesquisa de Preço
             </h1>
-            <button id="btnRefresh" class="btn-icon" title="Atualizar dados">
-                <i class="fas fa-sync-alt"></i>
-            </button>
+            <div class="header-actions">
+                <button id="btnRefresh" class="btn-icon" title="Atualizar dados">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button id="btnLogout" class="btn-icon" title="Sair">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- Conteúdo Principal -->
-    <main class="app-main">
+    <!-- Conteúdo Principal (escondido até login) -->
+    <main class="app-main" id="appMain" style="display: none;">
         <!-- Seção de Scanner -->
         <section class="scanner-section">
             <div class="scanner-container">
@@ -246,6 +253,8 @@
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/scanner.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ui-login.js"></script>
     <script src="js/ui-core.js"></script>
     <script src="js/ui-produto.js"></script>
     <script src="js/ui-historico.js"></script>
