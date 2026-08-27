@@ -15,13 +15,11 @@ class UILogin {
      * Cria overlay de login
      */
     criarOverlay() {
-        // Remove overlay existente
         const overlayExistente = document.getElementById('loginOverlay');
         if (overlayExistente) {
             overlayExistente.remove();
         }
 
-        // Cria novo overlay
         const overlay = document.createElement('div');
         overlay.id = 'loginOverlay';
         overlay.className = 'login-overlay';
@@ -50,7 +48,6 @@ class UILogin {
                                 placeholder="Digite seu usuário"
                                 autocomplete="username"
                                 required
-                                autofocus
                             >
                         </div>
                     </div>
@@ -99,13 +96,11 @@ class UILogin {
         this.usuarioInput = document.getElementById('loginUsuario');
         this.senhaInput = document.getElementById('loginSenha');
         
-        // Adiciona eventos
         this.bindEvents();
         
-        // Foca no campo de usuário
         setTimeout(() => {
             if (this.usuarioInput) {
-                this.usuarioInput.focus();
+                this.usuarioInput.focus({ preventScroll: true });
             }
         }, 300);
     }
@@ -114,7 +109,6 @@ class UILogin {
      * Liga eventos do formulário de login
      */
     bindEvents() {
-        // Evento de submit do formulário
         const form = document.getElementById('loginForm');
         if (form) {
             form.addEventListener('submit', (e) => {
@@ -123,7 +117,6 @@ class UILogin {
             });
         }
 
-        // Evento de toggle de senha
         const togglePassword = document.getElementById('togglePassword');
         if (togglePassword) {
             togglePassword.addEventListener('click', () => {
@@ -131,12 +124,11 @@ class UILogin {
             });
         }
 
-        // Evento de Enter nos campos
         if (this.usuarioInput) {
             this.usuarioInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    this.senhaInput.focus();
+                    if (this.senhaInput) this.senhaInput.focus({ preventScroll: true });
                 }
             });
         }
@@ -149,14 +141,6 @@ class UILogin {
                 }
             });
         }
-
-        // Previne clique fora do container
-        this.loginOverlay.addEventListener('click', (e) => {
-            if (e.target === this.loginOverlay) {
-                // Não faz nada (mantém overlay aberto)
-                this.mostrarErro('Faça login para continuar');
-            }
-        });
     }
 
     /**
@@ -169,10 +153,9 @@ class UILogin {
         
         this.loginOverlay.style.display = 'flex';
         
-        // Foca no campo de usuário
         setTimeout(() => {
             if (this.usuarioInput) {
-                this.usuarioInput.focus();
+                this.usuarioInput.focus({ preventScroll: true });
             }
         }, 300);
     }
@@ -193,12 +176,14 @@ class UILogin {
         const senhaInput = this.senhaInput;
         const toggleIcon = document.querySelector('#togglePassword i');
         
-        if (senhaInput.type === 'password') {
-            senhaInput.type = 'text';
-            toggleIcon.className = 'fas fa-eye-slash';
-        } else {
-            senhaInput.type = 'password';
-            toggleIcon.className = 'fas fa-eye';
+        if (senhaInput && toggleIcon) {
+            if (senhaInput.type === 'password') {
+                senhaInput.type = 'text';
+                toggleIcon.className = 'fas fa-eye-slash';
+            } else {
+                senhaInput.type = 'password';
+                toggleIcon.className = 'fas fa-eye';
+            }
         }
     }
 
@@ -207,34 +192,23 @@ class UILogin {
      */
     async fazerLogin() {
         try {
-            // Verifica se já está fazendo login
-            if (this.isLoggingIn) {
-                return;
-            }
+            if (this.isLoggingIn) return;
             
             const usuario = auth.sanitizarInput(this.usuarioInput.value);
             const senha = this.senhaInput.value;
             
-            // Validações básicas
             if (!usuario) {
                 this.mostrarErro('Digite o usuário!');
-                this.usuarioInput.focus();
+                this.usuarioInput.focus({ preventScroll: true });
                 return;
             }
             
             if (!senha) {
                 this.mostrarErro('Digite a senha!');
-                this.senhaInput.focus();
+                this.senhaInput.focus({ preventScroll: true });
                 return;
             }
             
-            if (senha.length < 4) {
-                this.mostrarErro('Senha muito curta!');
-                this.senhaInput.focus();
-                return;
-            }
-            
-            // Verifica se está bloqueado
             if (auth.estaBloqueado()) {
                 const tempoBloqueio = auth.obterTempoBloqueio();
                 const minutos = Math.ceil(tempoBloqueio / 60000);
@@ -242,13 +216,11 @@ class UILogin {
                 return;
             }
             
-            // Ativa estado de carregamento
             this.isLoggingIn = true;
             const botao = document.getElementById('loginButton');
             botao.disabled = true;
             botao.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
             
-            // Faz login
             await auth.login(usuario, senha);
             
             // Login bem-sucedido
@@ -259,10 +231,9 @@ class UILogin {
             // Mostra aplicação
             this.mostrarAplicacao();
             
-            // Inicializa UI e carrega dados
-            await this.inicializarAplicacao();
+            // Inicializa UI (sem carregar dados)
+            this.inicializarAplicacao();
             
-            // Mostra toast de boas-vindas
             ui.showToast('Login realizado com sucesso!', 'success');
             
         } catch (error) {
@@ -270,7 +241,6 @@ class UILogin {
             
             this.isLoggingIn = false;
             
-            // Verifica bloqueio
             if (auth.estaBloqueado()) {
                 const tempoBloqueio = auth.obterTempoBloqueio();
                 const minutos = Math.ceil(tempoBloqueio / 60000);
@@ -279,14 +249,16 @@ class UILogin {
                 this.mostrarErro(error.message || 'Erro ao fazer login');
             }
             
-            // Reabilita botão
             const botao = document.getElementById('loginButton');
-            botao.disabled = false;
-            botao.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+            if (botao) {
+                botao.disabled = false;
+                botao.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+            }
             
-            // Limpa senha
-            this.senhaInput.value = '';
-            this.senhaInput.focus();
+            if (this.senhaInput) {
+                this.senhaInput.value = '';
+                this.senhaInput.focus({ preventScroll: true });
+            }
         }
     }
 
@@ -297,15 +269,9 @@ class UILogin {
         const appHeader = document.getElementById('appHeader');
         const appMain = document.getElementById('appMain');
         
-        if (appHeader) {
-            appHeader.style.display = 'block';
-        }
+        if (appHeader) appHeader.style.display = 'block';
+        if (appMain) appMain.style.display = 'block';
         
-        if (appMain) {
-            appMain.style.display = 'block';
-        }
-        
-        // Adiciona evento de logout
         const btnLogout = document.getElementById('btnLogout');
         if (btnLogout) {
             btnLogout.addEventListener('click', () => {
@@ -315,15 +281,12 @@ class UILogin {
     }
 
     /**
-     * Inicializa aplicação após login
+     * Inicializa aplicação após login (SEM carregar dados)
      */
-    async inicializarAplicacao() {
+    inicializarAplicacao() {
         try {
             // Inicializa a UI
             ui.initialize();
-            
-            // Carrega dados
-            await ui.carregarDados();
             
             // Garante que loading está escondido
             ui.showLoading(false);
@@ -339,7 +302,7 @@ class UILogin {
         } catch (error) {
             console.error('Erro ao inicializar aplicação:', error);
             ui.showLoading(false);
-            ui.showToast('Erro ao carregar dados!', 'error');
+            ui.showToast('Erro ao inicializar!', 'error');
         }
     }
 
@@ -356,62 +319,36 @@ class UILogin {
      * Limpa campos do formulário
      */
     limparCampos() {
-        if (this.usuarioInput) {
-            this.usuarioInput.value = '';
-        }
+        if (this.usuarioInput) this.usuarioInput.value = '';
         if (this.senhaInput) {
             this.senhaInput.value = '';
             this.senhaInput.type = 'password';
         }
         
-        // Reseta ícone de toggle
         const toggleIcon = document.querySelector('#togglePassword i');
-        if (toggleIcon) {
-            toggleIcon.className = 'fas fa-eye';
-        }
+        if (toggleIcon) toggleIcon.className = 'fas fa-eye';
     }
 
     /**
      * Mostra erro de login
-     * @param {string} mensagem - Mensagem de erro
      */
     mostrarErro(mensagem) {
         const erroElement = document.getElementById('loginError');
         
-        if (!erroElement) {
-            console.error('Elemento loginError não encontrado');
-            return;
-        }
+        if (!erroElement) return;
         
         erroElement.textContent = mensagem;
         erroElement.classList.remove('hidden');
         
-        // Adiciona animação de shake
         erroElement.style.animation = 'none';
-        erroElement.offsetHeight; // Força reflow
+        erroElement.offsetHeight;
         erroElement.style.animation = 'shake 0.3s ease';
         
-        // Esconde após 5 segundos
         setTimeout(() => {
             erroElement.classList.add('hidden');
         }, 5000);
-    }
-
-    /**
-     * Esconde erro
-     */
-    esconderErro() {
-        const erroElement = document.getElementById('loginError');
-        if (erroElement) {
-            erroElement.classList.add('hidden');
-        }
     }
 }
 
 // Instância global de login
 const uiLogin = new UILogin();
-
-// Exporta para uso em outros módulos
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = UILogin;
-}
