@@ -12,6 +12,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadingSpinner.style.display = 'none';
     }
     
+    // VERIFICA AUTENTICAÇÃO
+    if (!auth.estaAutenticado()) {
+        console.log('Usuário não autenticado, mostrando login...');
+        uiLogin.mostrar();
+        return;
+    }
+    
+    console.log('Usuário autenticado, carregando aplicação...');
+    
     try {
         // Inicializa a UI
         ui.initialize();
@@ -25,14 +34,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Foca no input de código APENAS UMA VEZ
         const inputCodigo = document.getElementById('inputCodigo');
         if (inputCodigo) {
-            inputCodigo.focus({ preventScroll: true }); // Não faz scroll
+            inputCodigo.focus({ preventScroll: true });
         }
         
         console.log('Sistema iniciado com sucesso!');
         
         // Mostra mensagem de boas-vindas
         setTimeout(() => {
-            ui.showToast('Sistema pronto para uso!', 'success');
+            ui.showToast('Bem-vindo, PriceFribal!', 'success');
         }, 500);
         
     } catch (error) {
@@ -41,9 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.showToast('Erro ao inicializar sistema!', 'error');
     }
 });
-
-// REMOVIDO: Event listener que causava scroll automático
-// Agora só foca no input quando o usuário clica diretamente nele
 
 // Tratamento global de erros
 window.addEventListener('error', (event) => {
