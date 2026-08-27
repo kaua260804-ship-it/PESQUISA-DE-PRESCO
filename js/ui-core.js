@@ -29,29 +29,41 @@ class UI {
     bindEvents() {
         // Input de código
         const inputCodigo = document.getElementById('inputCodigo');
-        inputCodigo.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && inputCodigo.value.trim()) {
-                this.processarCodigo(inputCodigo.value.trim());
-            }
-        });
+        if (inputCodigo) {
+            inputCodigo.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && inputCodigo.value.trim()) {
+                    this.processarCodigo(inputCodigo.value.trim());
+                }
+            });
+        }
 
         // Botão de escanear
-        document.getElementById('btnScan').addEventListener('click', () => this.toggleScanner());
-        document.getElementById('btnStopScan').addEventListener('click', () => this.stopScanner());
+        const btnScan = document.getElementById('btnScan');
+        if (btnScan) {
+            btnScan.addEventListener('click', () => this.toggleScanner());
+        }
+
+        // Botão de parar scanner
+        const btnStopScan = document.getElementById('btnStopScan');
+        if (btnStopScan) {
+            btnStopScan.addEventListener('click', () => this.stopScanner());
+        }
 
         // Busca com debounce
         const inputBusca = document.getElementById('inputBusca');
-        inputBusca.addEventListener('input', (e) => {
-            clearTimeout(this.buscaTimeout);
-            const termo = e.target.value;
-            this.buscaTimeout = setTimeout(() => this.buscarProdutos(termo), 300);
-        });
-        
-        inputBusca.addEventListener('focus', () => {
-            if (inputBusca.value.trim()) {
-                this.buscarProdutos(inputBusca.value.trim());
-            }
-        });
+        if (inputBusca) {
+            inputBusca.addEventListener('input', (e) => {
+                clearTimeout(this.buscaTimeout);
+                const termo = e.target.value;
+                this.buscaTimeout = setTimeout(() => this.buscarProdutos(termo), 300);
+            });
+            
+            inputBusca.addEventListener('focus', () => {
+                if (inputBusca.value.trim()) {
+                    this.buscarProdutos(inputBusca.value.trim());
+                }
+            });
+        }
         
         // Fecha resultados da busca quando clica fora
         document.addEventListener('click', (e) => {
@@ -64,7 +76,10 @@ class UI {
         });
 
         // Fechar card
-        document.getElementById('btnFecharCard').addEventListener('click', () => this.fecharCard());
+        const btnFecharCard = document.getElementById('btnFecharCard');
+        if (btnFecharCard) {
+            btnFecharCard.addEventListener('click', () => this.fecharCard());
+        }
 
         // Botões de edição
         document.querySelectorAll('.btn-edit').forEach(btn => {
@@ -82,17 +97,34 @@ class UI {
         });
 
         // Histórico
-        document.getElementById('btnLimparHistorico').addEventListener('click', () => this.limparHistorico());
-        document.getElementById('btnExportarCSV').addEventListener('click', () => this.exportarCSV());
-        document.getElementById('btnExportarPDF').addEventListener('click', () => this.exportarPDF());
-        document.getElementById('btnRefresh').addEventListener('click', () => this.refreshDados());
+        const btnLimparHistorico = document.getElementById('btnLimparHistorico');
+        if (btnLimparHistorico) {
+            btnLimparHistorico.addEventListener('click', () => this.limparHistorico());
+        }
+
+        const btnExportarCSV = document.getElementById('btnExportarCSV');
+        if (btnExportarCSV) {
+            btnExportarCSV.addEventListener('click', () => this.exportarCSV());
+        }
+
+        const btnExportarPDF = document.getElementById('btnExportarPDF');
+        if (btnExportarPDF) {
+            btnExportarPDF.addEventListener('click', () => this.exportarPDF());
+        }
+
+        // Botão de refresh (apenas mostra toast)
+        const btnRefresh = document.getElementById('btnRefresh');
+        if (btnRefresh) {
+            btnRefresh.addEventListener('click', () => {
+                this.showToast('Dados sempre atualizados da planilha!', 'info');
+            });
+        }
 
         console.log('Eventos vinculados');
     }
 
     /**
      * Mostra/esconde loading
-     * @param {boolean} show - Se deve mostrar
      */
     showLoading(show) {
         const spinner = document.getElementById('loadingSpinner');
@@ -104,8 +136,6 @@ class UI {
 
     /**
      * Mostra toast notification
-     * @param {string} mensagem - Mensagem a ser exibida
-     * @param {string} tipo - Tipo do toast
      */
     showToast(mensagem, tipo = 'info') {
         const container = document.getElementById('toastContainer');
