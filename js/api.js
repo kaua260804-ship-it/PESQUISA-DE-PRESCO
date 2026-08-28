@@ -7,7 +7,7 @@ class API {
     constructor() {
         this.apiKey = CONFIG.SHEETS_API_KEY;
         this.spreadsheetId = CONFIG.SPREADSHEET_ID;
-        this.timeout = CONFIG.TIMEOUT || 15000;
+        this.timeout = CONFIG.TIMEOUT || 30000; // Aumentado para 30 segundos
         
         // Cache em memória
         this.cache = {
@@ -26,7 +26,10 @@ class API {
         console.log(`📊 Buscando aba: ${nomeAba}`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+        const timeoutId = setTimeout(() => {
+            console.warn(`⏰ Timeout ao buscar ${nomeAba} após ${this.timeout}ms`);
+            controller.abort();
+        }, this.timeout);
         
         try {
             const response = await fetch(url, {
@@ -50,7 +53,7 @@ class API {
         } catch (error) {
             clearTimeout(timeoutId);
             if (error.name === 'AbortError') {
-                throw new Error('Tempo esgotado. Tente novamente.');
+                throw new Error(`Tempo esgotado ao buscar ${nomeAba}. Tente novamente.`);
             }
             throw error;
         }
@@ -356,8 +359,8 @@ class API {
      * Usa Apps Script para escrita direta na planilha
      */
     async atualizarCampo(seqProd, campo, valor) {
-        let controller = null;
-        let timeoutId = null;
+        // Não usar AbortController para evitar abortos prematuros
+        // Usamos um timeout simples com Promise.race
         
         try {
             // Mapeia os campos para os nomes corretos
@@ -378,14 +381,13 @@ class API {
             console.log('✏️ Atualizando campo na ARVORE:', campoReal, 'para:', valor);
             console.log('📡 URL:', url);
             
-            controller = new AbortController();
-            timeoutId = setTimeout(() => controller.abort(), this.timeout);
-            
-            const response = await fetch(url, { 
-                signal: controller.signal 
+            // Cria uma promessa com timeout usando Promise.race
+            const fetchPromise = fetch(url);
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Tempo esgotado ao atualizar campo. Tente novamente.')), this.timeout);
             });
             
-            clearTimeout(timeoutId);
+            const response = await Promise.race([fetchPromise, timeoutPromise]);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -410,7 +412,6 @@ class API {
             return data;
             
         } catch (error) {
-            if (timeoutId) clearTimeout(timeoutId);
             console.error('❌ Erro ao atualizar campo:', error);
             throw error;
         }
