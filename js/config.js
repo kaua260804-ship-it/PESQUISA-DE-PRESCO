@@ -57,7 +57,7 @@
         CACHE_KEY: 'pesquisa_preco_cache',
         
         // Timeout
-        TIMEOUT: 15000, // 15 segundos
+        TIMEOUT: 60000, // 60 segundos
         
         // NOVA URL do Apps Script (para escrita)
         APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz9D3nA6KON9e3Ey0IQQ5lT-bZj0eqiPKVKQxPM2Tr4MGI6W20rlpmI5J33JxHxlwJEbg/exec',
@@ -70,7 +70,7 @@
             formatsToSupport: ['EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'Code 128', 'Code 39']
         },
         
-        TOAST_DURATION: 8000,
+        TOAST_DURATION: 4000,
         BEEP_CONFIG: {
             duration: 0.2,
             volume: 0.5,
