@@ -1,6 +1,6 @@
 /**
- * API.JS - VERSÃO COM GOOGLE SHEETS API
- * Busca direta na planilha sem Apps Script
+ * API.JS - VERSÃO OTIMIZADA
+ * ARVORE como base principal, BASE como índice de códigos
  */
 
 class API {
@@ -18,7 +18,7 @@ class API {
     }
 
     /**
-     * Busca uma aba da planilha
+     * Busca uma aba da planilha via API
      */
     async buscarAba(nomeAba) {
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${nomeAba}?key=${this.apiKey}`;
@@ -57,7 +57,7 @@ class API {
     }
 
     /**
-     * Carrega ARVORE com cache
+     * CARREGA ARVORE - Base principal com todos os dados
      */
     async carregarArvore(forcarRecarga = false) {
         const agora = Date.now();
@@ -69,7 +69,7 @@ class API {
         
         try {
             const dados = await this.buscarAba(CONFIG.SHEET_ARVORE);
-            const headers = dados[0];
+            const col = CONFIG.ARVORE_COLUNAS;
             
             const mapPorSeq = {};
             const mapPorFml = {};
@@ -77,23 +77,34 @@ class API {
             
             for (let i = 1; i < dados.length; i++) {
                 const row = dados[i];
-                const seqProd = (row[1] || '').trim();
-                const seqFml = (row[0] || '').trim();
+                const seqProd = (row[col.SEQ_PROD] || '').trim();
+                const seqFml = (row[col.SEQ_FML] || '').trim();
                 
                 if (!seqProd) continue;
                 
                 const item = {
+                    // Identificação
                     seqFml: seqFml,
                     seqProd: seqProd,
-                    desc: (row[2] || '').trim(),
-                    divisao: (row[3] || '').trim(),
-                    comprador: (row[4] || '').trim(),
-                    categoria: (row[5] || '').trim(),
-                    grupo: (row[6] || '').trim(),
-                    subgrupo: (row[7] || '').trim(),
-                    subgrupo1: (row[8] || '').trim(),
-                    subgrupo2: (row[9] || '').trim(),
-                    subgrupo3: (row[10] || '').trim()
+                    
+                    // Dados principais
+                    desc: (row[col.DESC] || '').trim(),
+                    divisao: (row[col.DIVISAO] || '').trim(),
+                    comprador: (row[col.COMPRADOR] || '').trim(),
+                    categoria: (row[col.CATEGORIA] || '').trim(),
+                    grupo: (row[col.GRUPO] || '').trim(),
+                    subgrupo: (row[col.SUBGRUPO] || '').trim(),
+                    subgrupo1: (row[col.SUBGRUPO_1] || '').trim(),
+                    subgrupo2: (row[col.SUBGRUPO_2] || '').trim(),
+                    subgrupo3: (row[col.SUBGRUPO_3] || '').trim(),
+                    
+                    // Campos editáveis (agora na ARVORE)
+                    nossoPreco: row[col.NOSSO_PRECO] || '',
+                    precoConcorrente: row[col.PRECO_CONCORRENTE] || '',
+                    observacao: row[col.OBSERVACAO] || '',
+                    
+                    // Metadados
+                    linha: i + 1 // Para atualizações
                 };
                 
                 mapPorSeq[seqProd] = item;
@@ -114,7 +125,7 @@ class API {
     }
 
     /**
-     * Carrega BASE com cache
+     * CARREGA BASE - Apenas índice de códigos de barras
      */
     async carregarBase(forcarRecarga = false) {
         const agora = Date.now();
@@ -126,27 +137,23 @@ class API {
         
         try {
             const dados = await this.buscarAba(CONFIG.SHEET_BASE);
+            const col = CONFIG.BASE_COLUNAS;
             
             const porEAN = {};
             const porSeq = {};
             
             for (let i = 1; i < dados.length; i++) {
                 const row = dados[i];
-                const seqProd = (row[0] || '').trim();
-                const codAcesso = (row[5] || '').trim();
+                const seqProd = (row[col.SEQ_PROD] || '').trim();
+                const codAcesso = (row[col.COD_ACESSO] || '').trim();
                 
                 if (!seqProd && !codAcesso) continue;
                 
                 const item = {
-                    linha: i + 1,
-                    seqProduto: seqProd,
-                    produto: (row[1] || '').trim(),
-                    tipoCodigo: (row[3] || '').trim(),
-                    qtdeEmbalagem: (row[4] || '').trim(),
-                    codAcesso: codAcesso,
-                    observacao: (row[6] || '').trim(),
-                    nossoPreco: row[7] || '',
-                    precoConcorrente: row[8] || ''
+                    seqProd: seqProd,
+                    produto: (row[col.PRODUTO] || '').trim(),
+                    tipoCodigo: (row[col.TIPO_CODIGO] || '').trim(),
+                    codAcesso: codAcesso
                 };
                 
                 if (codAcesso) porEAN[codAcesso] = item;
@@ -154,7 +161,6 @@ class API {
             }
             
             this.cache.base = { porEAN, porSeq };
-            this.cache.timestamp = agora;
             
             console.log(`✅ BASE cache: ${Object.keys(porEAN).length} EANs`);
             return this.cache.base;
@@ -166,7 +172,9 @@ class API {
     }
 
     /**
-     * Busca por EAN
+     * BUSCA POR EAN
+     * 1. Encontra o SEQ na BASE
+     * 2. Busca os dados completos na ARVORE
      */
     async buscarPorEAN(ean) {
         try {
@@ -177,40 +185,65 @@ class API {
                 return null;
             }
             
-            // Carrega BASE
+            // PASSO 1: Busca o SEQ na BASE
             const base = await this.carregarBase();
             const baseItem = base.porEAN[eanNormalizado];
             
             if (!baseItem) {
-                console.log('❌ EAN não encontrado');
+                console.log('❌ EAN não encontrado na BASE');
                 return null;
             }
             
-            console.log('✅ EAN encontrado, SEQ:', baseItem.seqProduto);
+            console.log('✅ EAN encontrado na BASE, SEQ:', baseItem.seqProd);
             
-            // Carrega ARVORE
+            // PASSO 2: Busca os dados completos na ARVORE
             const arvore = await this.carregarArvore();
-            const arvoreItem = arvore.map[baseItem.seqProduto];
+            const arvoreItem = arvore.map[baseItem.seqProd];
             
-            // Combina os dados
+            if (!arvoreItem) {
+                console.log('⚠️ SEQ não encontrado na ARVORE, retornando dados básicos');
+                // Retorna dados básicos da BASE
+                return {
+                    seqFml: '',
+                    seqProd: baseItem.seqProd,
+                    desc: baseItem.produto || 'Produto sem descrição',
+                    divisao: '',
+                    comprador: '',
+                    categoria: '',
+                    grupo: '',
+                    subgrupo: '',
+                    subgrupo1: '',
+                    subgrupo2: '',
+                    subgrupo3: '',
+                    tipoCodigo: baseItem.tipoCodigo || '',
+                    codAcesso: baseItem.codAcesso || '',
+                    nossoPreco: '',
+                    precoConcorrente: '',
+                    observacao: ''
+                };
+            }
+            
+            // PASSO 3: Combina os dados (ARVORE tem prioridade)
             return {
-                seqFml: arvoreItem ? arvoreItem.seqFml : '',
-                seqProd: baseItem.seqProduto,
-                desc: arvoreItem ? arvoreItem.desc : baseItem.produto,
-                divisao: arvoreItem ? arvoreItem.divisao : '',
-                comprador: arvoreItem ? arvoreItem.comprador : '',
-                categoria: arvoreItem ? arvoreItem.categoria : '',
-                grupo: arvoreItem ? arvoreItem.grupo : '',
-                subgrupo: arvoreItem ? arvoreItem.subgrupo : '',
-                subgrupo1: arvoreItem ? arvoreItem.subgrupo1 : '',
-                subgrupo2: arvoreItem ? arvoreItem.subgrupo2 : '',
-                subgrupo3: arvoreItem ? arvoreItem.subgrupo3 : '',
+                // Dados da ARVORE
+                seqFml: arvoreItem.seqFml || '',
+                seqProd: arvoreItem.seqProd || '',
+                desc: arvoreItem.desc || baseItem.produto || '',
+                divisao: arvoreItem.divisao || '',
+                comprador: arvoreItem.comprador || '',
+                categoria: arvoreItem.categoria || '',
+                grupo: arvoreItem.grupo || '',
+                subgrupo: arvoreItem.subgrupo || '',
+                subgrupo1: arvoreItem.subgrupo1 || '',
+                subgrupo2: arvoreItem.subgrupo2 || '',
+                subgrupo3: arvoreItem.subgrupo3 || '',
+                // Campos editáveis da ARVORE
+                nossoPreco: arvoreItem.nossoPreco || '',
+                precoConcorrente: arvoreItem.precoConcorrente || '',
+                observacao: arvoreItem.observacao || '',
+                // Dados da BASE (complementares)
                 tipoCodigo: baseItem.tipoCodigo || '',
-                qtdeEmbalagem: baseItem.qtdeEmbalagem || '',
-                codAcesso: baseItem.codAcesso || '',
-                observacao: baseItem.observacao || '',
-                nossoPreco: baseItem.nossoPreco || '',
-                precoConcorrente: baseItem.precoConcorrente || ''
+                codAcesso: baseItem.codAcesso || ''
             };
             
         } catch (error) {
@@ -220,7 +253,8 @@ class API {
     }
 
     /**
-     * Busca por SEQ
+     * BUSCA POR SEQ
+     * Busca direto na ARVORE
      */
     async buscarPorSeq(seq) {
         try {
@@ -231,46 +265,26 @@ class API {
                 return null;
             }
             
-            // Carrega ARVORE
+            // Busca direto na ARVORE
             const arvore = await this.carregarArvore();
             let arvoreItem = arvore.map[seqNormalizado];
             
+            // Se não encontrou, tenta por SEQ FML
             if (!arvoreItem) {
                 arvoreItem = arvore.mapFml[seqNormalizado];
             }
             
-            // Carrega BASE
-            const base = await this.carregarBase();
-            const baseItem = base.porSeq[seqNormalizado];
-            
-            if (!arvoreItem && !baseItem) {
-                console.log('❌ SEQ não encontrado');
+            if (!arvoreItem) {
+                console.log('❌ SEQ não encontrado na ARVORE');
                 return null;
             }
             
-            if (!arvoreItem) {
-                return {
-                    seqFml: '',
-                    seqProd: baseItem.seqProduto,
-                    desc: baseItem.produto || '',
-                    divisao: '',
-                    comprador: '',
-                    categoria: '',
-                    grupo: '',
-                    subgrupo: '',
-                    subgrupo1: '',
-                    subgrupo2: '',
-                    subgrupo3: '',
-                    tipoCodigo: baseItem.tipoCodigo || '',
-                    qtdeEmbalagem: baseItem.qtdeEmbalagem || '',
-                    codAcesso: baseItem.codAcesso || '',
-                    observacao: baseItem.observacao || '',
-                    nossoPreco: baseItem.nossoPreco || '',
-                    precoConcorrente: baseItem.precoConcorrente || ''
-                };
-            }
+            // Busca dados complementares na BASE
+            const base = await this.carregarBase();
+            const baseItem = base.porSeq[seqNormalizado];
             
             return {
+                // Dados da ARVORE
                 seqFml: arvoreItem.seqFml || '',
                 seqProd: arvoreItem.seqProd || '',
                 desc: arvoreItem.desc || '',
@@ -282,12 +296,13 @@ class API {
                 subgrupo1: arvoreItem.subgrupo1 || '',
                 subgrupo2: arvoreItem.subgrupo2 || '',
                 subgrupo3: arvoreItem.subgrupo3 || '',
+                // Campos editáveis da ARVORE
+                nossoPreco: arvoreItem.nossoPreco || '',
+                precoConcorrente: arvoreItem.precoConcorrente || '',
+                observacao: arvoreItem.observacao || '',
+                // Dados da BASE
                 tipoCodigo: baseItem ? baseItem.tipoCodigo : '',
-                qtdeEmbalagem: baseItem ? baseItem.qtdeEmbalagem : '',
-                codAcesso: baseItem ? baseItem.codAcesso : '',
-                observacao: baseItem ? baseItem.observacao : '',
-                nossoPreco: baseItem ? baseItem.nossoPreco : '',
-                precoConcorrente: baseItem ? baseItem.precoConcorrente : ''
+                codAcesso: baseItem ? baseItem.codAcesso : ''
             };
             
         } catch (error) {
@@ -297,7 +312,8 @@ class API {
     }
 
     /**
-     * Busca por descrição
+     * BUSCA POR DESCRIÇÃO
+     * Busca apenas na ARVORE (mais rápida)
      */
     async buscarPorDescricao(termo) {
         try {
@@ -315,7 +331,15 @@ class API {
             
             for (const item of arvore.list) {
                 if (item.desc && item.desc.toLowerCase().includes(termoLower)) {
-                    resultados.push(item);
+                    resultados.push({
+                        seqFml: item.seqFml,
+                        seqProd: item.seqProd,
+                        desc: item.desc,
+                        divisao: item.divisao,
+                        comprador: item.comprador,
+                        categoria: item.categoria,
+                        grupo: item.grupo
+                    });
                     if (resultados.length >= 30) break;
                 }
             }
@@ -330,15 +354,27 @@ class API {
     }
 
     /**
-     * Atualiza campo (ainda usa Apps Script para escrita)
-     * Mas a leitura já é pela API
+     * ATUALIZA CAMPO NA ARVORE
+     * Usa Apps Script para escrita (mais simples)
      */
     async atualizarCampo(seqProd, campo, valor) {
         try {
-            // Para escrita, ainda usamos o Apps Script (é mais simples)
-            const url = `${CONFIG.APPS_SCRIPT_URL}?action=atualizar&seqProd=${encodeURIComponent(seqProd)}&campo=${encodeURIComponent(campo)}&valor=${encodeURIComponent(valor)}`;
+            // Mapeia os campos para os índices da ARVORE
+            const campoMap = {
+                'nossoPreco': 'nossoPreco',
+                'precoConcorrente': 'precoConcorrente',
+                'observacao': 'observacao'
+            };
             
-            console.log('✏️ Atualizando campo:', campo, 'para:', valor);
+            const campoReal = campoMap[campo];
+            if (!campoReal) {
+                throw new Error('Campo inválido');
+            }
+            
+            // Usa o Apps Script para escrever na ARVORE
+            const url = `${CONFIG.APPS_SCRIPT_URL}?action=atualizarArvore&seqProd=${encodeURIComponent(seqProd)}&campo=${encodeURIComponent(campoReal)}&valor=${encodeURIComponent(valor)}`;
+            
+            console.log('✏️ Atualizando campo na ARVORE:', campoReal, 'para:', valor);
             
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), this.timeout);
@@ -356,8 +392,8 @@ class API {
                 throw new Error(data.message || 'Erro ao atualizar');
             }
             
-            // Invalida cache da BASE
-            this.cache.base = null;
+            // Invalida cache da ARVORE
+            this.cache.arvore = null;
             
             console.log('✅ Atualização realizada com sucesso');
             return data;
@@ -370,18 +406,24 @@ class API {
     }
 
     /**
-     * Pré-carrega todos os dados (chamar no login)
+     * PRÉ-CARREGA TODOS OS DADOS
      */
     async preCarregar() {
         console.log('🚀 Pré-carregando dados...');
+        const inicio = Date.now();
+        
         try {
             await Promise.all([
                 this.carregarArvore(),
                 this.carregarBase()
             ]);
-            console.log('✅ Dados pré-carregados com sucesso');
+            
+            const fim = Date.now();
+            console.log(`✅ Dados pré-carregados em ${fim - inicio}ms`);
+            
         } catch (error) {
             console.error('❌ Erro ao pré-carregar:', error);
+            throw error;
         }
     }
 }
