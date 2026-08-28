@@ -60,7 +60,7 @@
         TIMEOUT: 15000, // 15 segundos
         
         // Apps Script URL (para escrita)
-        APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxxnwpuKSC7pRINbV8g9CZWYPhJXlAbUnSGSXJGe2p82nzATMPG30Vr0eVIkIlItwNeVw/exec',
+        APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz9D3nA6KON9e3Ey0IQQ5lT-bZj0eqiPKVKQxPM2Tr4MGI6W20rlpmI5J33JxHxlwJEbg/exec',
         
         // Configurações do scanner
         SCANNER_CONFIG: {
