@@ -7,7 +7,7 @@ class API {
     constructor() {
         this.apiKey = CONFIG.SHEETS_API_KEY;
         this.spreadsheetId = CONFIG.SPREADSHEET_ID;
-        this.timeout = CONFIG.TIMEOUT;
+        this.timeout = CONFIG.TIMEOUT || 15000;
         
         // Cache em memória
         this.cache = {
@@ -202,7 +202,6 @@ class API {
             
             if (!arvoreItem) {
                 console.log('⚠️ SEQ não encontrado na ARVORE, retornando dados básicos');
-                // Retorna dados básicos da BASE
                 return {
                     seqFml: '',
                     seqProd: baseItem.seqProd,
@@ -269,7 +268,6 @@ class API {
             const arvore = await this.carregarArvore();
             let arvoreItem = arvore.map[seqNormalizado];
             
-            // Se não encontrou, tenta por SEQ FML
             if (!arvoreItem) {
                 arvoreItem = arvore.mapFml[seqNormalizado];
             }
@@ -355,11 +353,14 @@ class API {
 
     /**
      * ATUALIZA CAMPO NA ARVORE
-     * Usa Apps Script para escrita (mais simples)
+     * Usa Apps Script para escrita direta na planilha
      */
     async atualizarCampo(seqProd, campo, valor) {
+        let controller = null;
+        let timeoutId = null;
+        
         try {
-            // Mapeia os campos para os índices da ARVORE
+            // Mapeia os campos para os nomes corretos
             const campoMap = {
                 'nossoPreco': 'nossoPreco',
                 'precoConcorrente': 'precoConcorrente',
@@ -376,10 +377,13 @@ class API {
             
             console.log('✏️ Atualizando campo na ARVORE:', campoReal, 'para:', valor);
             
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+            controller = new AbortController();
+            timeoutId = setTimeout(() => controller.abort(), this.timeout);
             
-            const response = await fetch(url, { signal: controller.signal });
+            const response = await fetch(url, { 
+                signal: controller.signal 
+            });
+            
             clearTimeout(timeoutId);
             
             if (!response.ok) {
@@ -392,14 +396,19 @@ class API {
                 throw new Error(data.message || 'Erro ao atualizar');
             }
             
-            // Invalida cache da ARVORE
+            // Invalida o cache da ARVORE para forçar recarga
             this.cache.arvore = null;
+            this.cache.timestamp = 0;
             
-            console.log('✅ Atualização realizada com sucesso');
+            console.log('✅ Atualização realizada com sucesso na planilha!');
+            
+            // Recarrega a ARVORE para ter os dados atualizados no cache
+            await this.carregarArvore(true);
+            
             return data;
             
         } catch (error) {
-            clearTimeout(timeoutId);
+            if (timeoutId) clearTimeout(timeoutId);
             console.error('❌ Erro ao atualizar campo:', error);
             throw error;
         }
@@ -428,4 +437,5 @@ class API {
     }
 }
 
+// Instância global da API
 const api = new API();
