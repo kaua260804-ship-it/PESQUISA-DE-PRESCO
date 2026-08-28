@@ -1,6 +1,6 @@
 /**
  * CONFIG.JS - Configurações globais do sistema
- * VERSÃO REFORÇADA COM VERIFICAÇÕES
+ * VERSÃO ATUALIZADA COM NOVA URL DO APPS SCRIPT
  */
 
 (function() {
@@ -59,7 +59,7 @@
         // Timeout
         TIMEOUT: 15000, // 15 segundos
         
-        // Apps Script URL (para escrita)
+        // NOVA URL do Apps Script (para escrita)
         APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz9D3nA6KON9e3Ey0IQQ5lT-bZj0eqiPKVKQxPM2Tr4MGI6W20rlpmI5J33JxHxlwJEbg/exec',
         
         // Configurações do scanner
@@ -84,5 +84,6 @@
     console.log('✅ CONFIG carregado com sucesso!');
     console.log('📊 Spreadsheet ID:', CONFIG.SPREADSHEET_ID);
     console.log('📋 Abas:', CONFIG.SHEET_ARVORE, 'e', CONFIG.SHEET_BASE);
+    console.log('🔗 Apps Script URL:', CONFIG.APPS_SCRIPT_URL);
     
 })();
