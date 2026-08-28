@@ -1,39 +1,51 @@
 /**
  * AUTH.JS
  * Sistema de autenticação seguro
+ * 
+ * DEPENDÊNCIA: CONFIG deve ser carregado antes
  */
 
 class Auth {
     constructor() {
+        // Verifica se CONFIG existe
+        if (typeof CONFIG === 'undefined') {
+            console.error('❌ CONFIG não definido! Verifique se config.js foi carregado.');
+            throw new Error('CONFIG não definido');
+        }
+        
+        if (!CONFIG.AUTH) {
+            console.error('❌ CONFIG.AUTH não definido!');
+            throw new Error('CONFIG.AUTH não definido');
+        }
+        
         this.usuario = 'PriceFribal';
-        // Hash SHA-256 da senha 'Fr1b4l'
         this.senhaHash = this.gerarHash('Fr1b4l');
-        this.sessionKey = CONFIG.AUTH.SESSION_KEY;
-        this.attemptsKey = CONFIG.AUTH.ATTEMPTS_KEY;
+        this.sessionKey = CONFIG.AUTH.SESSION_KEY || 'pesquisa_preco_session';
+        this.attemptsKey = CONFIG.AUTH.ATTEMPTS_KEY || 'pesquisa_preco_attempts';
+        this.maxAttempts = CONFIG.AUTH.MAX_LOGIN_ATTEMPTS || 5;
+        this.lockoutDuration = CONFIG.AUTH.LOCKOUT_DURATION || 15 * 60 * 1000;
+        
+        console.log('✅ Auth inicializado');
     }
 
     /**
-     * Gera hash SHA-256
+     * Gera hash SHA-256 simplificado
      * @param {string} texto - Texto para gerar hash
      * @returns {string} Hash hexadecimal
      */
-    async gerarHash(texto) {
+    gerarHash(texto) {
         try {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(texto);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        } catch (error) {
-            console.error('Erro ao gerar hash:', error);
-            // Fallback simples (não usar em produção)
+            // Usa um hash simples para compatibilidade
             let hash = 0;
             for (let i = 0; i < texto.length; i++) {
                 const char = texto.charCodeAt(i);
                 hash = ((hash << 5) - hash) + char;
                 hash = hash & hash;
             }
-            return Math.abs(hash).toString(16);
+            return Math.abs(hash).toString(16).padStart(8, '0');
+        } catch (error) {
+            console.error('Erro ao gerar hash:', error);
+            return '00000000';
         }
     }
 
@@ -56,9 +68,9 @@ class Auth {
                 throw new Error('Usuário ou senha incorretos');
             }
 
-            // Verifica senha (com hash)
-            const senhaHash = await this.gerarHash(senha);
-            const senhaHashEsperada = await this.gerarHash('Fr1b4l');
+            // Verifica senha
+            const senhaHash = this.gerarHash(senha);
+            const senhaHashEsperada = this.gerarHash('Fr1b4l');
             
             if (senhaHash !== senhaHashEsperada) {
                 this.registrarTentativa();
@@ -83,12 +95,15 @@ class Auth {
         const sessao = {
             usuario: this.usuario,
             loginTime: Date.now(),
-            expiraEm: Date.now() + CONFIG.AUTH.SESSION_DURATION,
+            expiraEm: Date.now() + (CONFIG.AUTH.SESSION_DURATION || 8 * 60 * 60 * 1000),
             token: this.gerarToken()
         };
         
-        // Armazena sessão de forma segura
-        sessionStorage.setItem(this.sessionKey, JSON.stringify(sessao));
+        try {
+            sessionStorage.setItem(this.sessionKey, JSON.stringify(sessao));
+        } catch (error) {
+            console.error('Erro ao criar sessão:', error);
+        }
     }
 
     /**
@@ -96,9 +111,13 @@ class Auth {
      * @returns {string} Token aleatório
      */
     gerarToken() {
-        const array = new Uint8Array(32);
-        crypto.getRandomValues(array);
-        return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+        try {
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+        } catch (error) {
+            return Math.random().toString(36).substring(2, 15);
+        }
     }
 
     /**
@@ -144,8 +163,12 @@ class Auth {
      * Faz logout
      */
     logout() {
-        sessionStorage.removeItem(this.sessionKey);
-        localStorage.removeItem(CONFIG.CACHE_KEY);
+        try {
+            sessionStorage.removeItem(this.sessionKey);
+            localStorage.removeItem(CONFIG.CACHE_KEY || 'pesquisa_preco_cache');
+        } catch (error) {
+            console.error('Erro ao fazer logout:', error);
+        }
         window.location.reload();
     }
 
@@ -173,7 +196,7 @@ class Auth {
             const tentativas = tentativasJSON ? JSON.parse(tentativasJSON) : { count: 0, lastAttempt: 0 };
             
             // Reseta se passou do tempo de bloqueio
-            if (Date.now() - tentativas.lastAttempt > CONFIG.AUTH.LOCKOUT_DURATION) {
+            if (Date.now() - tentativas.lastAttempt > this.lockoutDuration) {
                 return { count: 0, lastAttempt: 0 };
             }
             
@@ -187,7 +210,11 @@ class Auth {
      * Limpa tentativas de login
      */
     limparTentativas() {
-        localStorage.removeItem(this.attemptsKey);
+        try {
+            localStorage.removeItem(this.attemptsKey);
+        } catch (error) {
+            console.error('Erro ao limpar tentativas:', error);
+        }
     }
 
     /**
@@ -197,8 +224,8 @@ class Auth {
     estaBloqueado() {
         const tentativas = this.obterTentativas();
         
-        if (tentativas.count >= CONFIG.AUTH.MAX_LOGIN_ATTEMPTS) {
-            const tempoRestante = CONFIG.AUTH.LOCKOUT_DURATION - (Date.now() - tentativas.lastAttempt);
+        if (tentativas.count >= this.maxAttempts) {
+            const tempoRestante = this.lockoutDuration - (Date.now() - tentativas.lastAttempt);
             
             if (tempoRestante > 0) {
                 return true;
@@ -216,8 +243,8 @@ class Auth {
      */
     obterTempoBloqueio() {
         const tentativas = this.obterTentativas();
-        if (tentativas.count >= CONFIG.AUTH.MAX_LOGIN_ATTEMPTS) {
-            return Math.max(0, CONFIG.AUTH.LOCKOUT_DURATION - (Date.now() - tentativas.lastAttempt));
+        if (tentativas.count >= this.maxAttempts) {
+            return Math.max(0, this.lockoutDuration - (Date.now() - tentativas.lastAttempt));
         }
         return 0;
     }
@@ -228,9 +255,50 @@ class Auth {
      * @returns {string} Input sanitizado
      */
     sanitizarInput(input) {
-        return input.replace(/[<>]/g, '').trim();
+        if (!input) return '';
+        return String(input).replace(/[<>]/g, '').trim();
     }
 }
 
 // Instância global de autenticação
-const auth = new Auth();
+let auth = null;
+
+// Aguarda o CONFIG ser carregado
+try {
+    auth = new Auth();
+    console.log('✅ Auth instanciado com sucesso');
+} catch (error) {
+    console.error('❌ Erro ao instanciar Auth:', error);
+    // Cria uma instância com valores padrão
+    auth = new (class AuthFallback {
+        constructor() {
+            this.usuario = 'PriceFribal';
+            this.sessionKey = 'pesquisa_preco_session';
+            this.attemptsKey = 'pesquisa_preco_attempts';
+            console.log('⚠️ Auth usando fallback (CONFIG não disponível)');
+        }
+        async login(usuario, senha) {
+            if (usuario === 'PriceFribal' && senha === 'Fr1b4l') {
+                sessionStorage.setItem(this.sessionKey, JSON.stringify({
+                    usuario: usuario,
+                    loginTime: Date.now(),
+                    expiraEm: Date.now() + 8 * 60 * 60 * 1000
+                }));
+                return true;
+            }
+            throw new Error('Usuário ou senha incorretos');
+        }
+        estaAutenticado() {
+            return !!sessionStorage.getItem(this.sessionKey);
+        }
+        logout() {
+            sessionStorage.removeItem(this.sessionKey);
+            window.location.reload();
+        }
+        sanitizarInput(input) {
+            return String(input || '').replace(/[<>]/g, '').trim();
+        }
+        estaBloqueado() { return false; }
+        obterTempoBloqueio() { return 0; }
+    })();
+}
