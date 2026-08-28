@@ -1,6 +1,5 @@
 /**
- * CONFIG.JS - VERSÃO COM GOOGLE SHEETS API
- * Estrutura otimizada com ARVORE como base
+ * CONFIG.JS - Configurações globais do sistema
  */
 
 const CONFIG = {
@@ -38,11 +37,24 @@ const CONFIG = {
         COD_ACESSO: 3
     },
     
-    // Timeout
-    TIMEOUT: 15000, // 15 segundos
+    // Configurações de autenticação
+    AUTH: {
+        SESSION_DURATION: 8 * 60 * 60 * 1000, // 8 horas
+        MAX_LOGIN_ATTEMPTS: 5,
+        LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minutos
+        SESSION_KEY: 'pesquisa_preco_session',
+        ATTEMPTS_KEY: 'pesquisa_preco_attempts'
+    },
     
     // Cache local
     CACHE_DURATION: 60 * 60 * 1000, // 1 hora
+    CACHE_KEY: 'pesquisa_preco_cache',
+    
+    // Timeout
+    TIMEOUT: 15000, // 15 segundos
+    
+    // Apps Script URL (para escrita)
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxxnwpuKSC7pRINbV8g9CZWYPhJXlAbUnSGSXJGe2p82nzATMPG30Vr0eVIkIlItwNeVw/exec',
     
     // Configurações do scanner
     SCANNER_CONFIG: {
