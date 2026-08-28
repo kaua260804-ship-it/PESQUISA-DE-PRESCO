@@ -249,15 +249,35 @@
     <!-- Biblioteca html5-qrcode -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     
-    <!-- Scripts do projeto (ordem importante) -->
+    <!-- ============================================= -->
+    <!-- SCRIPTS DO PROJETO - ORDEM CORRETA E CRÍTICA  -->
+    <!-- ============================================= -->
+    
+    <!-- 1º CONFIG - Primeiro e mais importante -->
     <script src="js/config.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/scanner.js"></script>
+    
+    <!-- 2º AUTH - Depende de CONFIG -->
     <script src="js/auth.js"></script>
-    <script src="js/ui-login.js"></script>
+    
+    <!-- 3º API - Depende de CONFIG -->
+    <script src="js/api.js"></script>
+    
+    <!-- 4º SCANNER - Depende de html5-qrcode -->
+    <script src="js/scanner.js"></script>
+    
+    <!-- 5º UI CORE - Depende de API -->
     <script src="js/ui-core.js"></script>
+    
+    <!-- 6º UI LOGIN - Depende de AUTH e UI CORE -->
+    <script src="js/ui-login.js"></script>
+    
+    <!-- 7º UI PRODUTO - Depende de API e UI CORE -->
     <script src="js/ui-produto.js"></script>
+    
+    <!-- 8º UI HISTORICO - Depende de UI CORE -->
     <script src="js/ui-historico.js"></script>
+    
+    <!-- 9º MAIN - Último, depende de tudo -->
     <script src="js/main.js"></script>
 </body>
 </html>
