@@ -6,6 +6,14 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Iniciando Pesquisa de Preço...');
     
+    // Verifica se o auth foi carregado
+    if (typeof auth === 'undefined' || !auth) {
+        console.error('❌ Auth não carregado!');
+        // Tenta recarregar
+        location.reload();
+        return;
+    }
+    
     // Garante que o loading está escondido inicialmente
     const loadingSpinner = document.getElementById('loadingSpinner');
     if (loadingSpinner) {
