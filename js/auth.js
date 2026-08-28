@@ -1,41 +1,51 @@
 /**
  * AUTH.JS
- * Sistema de autenticação seguro
- * 
- * DEPENDÊNCIA: CONFIG deve ser carregado antes
+ * Sistema de autenticação seguro - VERSÃO ROBUSTA
  */
+
+// Verifica se CONFIG existe, se não, cria um fallback
+if (typeof CONFIG === 'undefined') {
+    console.warn('⚠️ CONFIG não definido, criando fallback...');
+    window.CONFIG = {
+        AUTH: {
+            SESSION_KEY: 'pesquisa_preco_session',
+            ATTEMPTS_KEY: 'pesquisa_preco_attempts',
+            SESSION_DURATION: 8 * 60 * 60 * 1000,
+            MAX_LOGIN_ATTEMPTS: 5,
+            LOCKOUT_DURATION: 15 * 60 * 1000
+        },
+        CACHE_KEY: 'pesquisa_preco_cache'
+    };
+}
 
 class Auth {
     constructor() {
-        // Verifica se CONFIG existe
-        if (typeof CONFIG === 'undefined') {
-            console.error('❌ CONFIG não definido! Verifique se config.js foi carregado.');
-            throw new Error('CONFIG não definido');
-        }
+        console.log('🔐 Inicializando Auth...');
         
-        if (!CONFIG.AUTH) {
-            console.error('❌ CONFIG.AUTH não definido!');
-            throw new Error('CONFIG.AUTH não definido');
-        }
+        // Usa CONFIG com fallback seguro
+        this.config = window.CONFIG || {};
+        this.authConfig = this.config.AUTH || {};
         
         this.usuario = 'PriceFribal';
         this.senhaHash = this.gerarHash('Fr1b4l');
-        this.sessionKey = CONFIG.AUTH.SESSION_KEY || 'pesquisa_preco_session';
-        this.attemptsKey = CONFIG.AUTH.ATTEMPTS_KEY || 'pesquisa_preco_attempts';
-        this.maxAttempts = CONFIG.AUTH.MAX_LOGIN_ATTEMPTS || 5;
-        this.lockoutDuration = CONFIG.AUTH.LOCKOUT_DURATION || 15 * 60 * 1000;
         
-        console.log('✅ Auth inicializado');
+        // Valores com fallback
+        this.sessionKey = this.authConfig.SESSION_KEY || 'pesquisa_preco_session';
+        this.attemptsKey = this.authConfig.ATTEMPTS_KEY || 'pesquisa_preco_attempts';
+        this.maxAttempts = this.authConfig.MAX_LOGIN_ATTEMPTS || 5;
+        this.lockoutDuration = this.authConfig.LOCKOUT_DURATION || 15 * 60 * 1000;
+        this.sessionDuration = this.authConfig.SESSION_DURATION || 8 * 60 * 60 * 1000;
+        this.cacheKey = this.config.CACHE_KEY || 'pesquisa_preco_cache';
+        
+        console.log('✅ Auth inicializado com sucesso!');
+        console.log('📌 Session Key:', this.sessionKey);
     }
 
     /**
      * Gera hash SHA-256 simplificado
-     * @param {string} texto - Texto para gerar hash
-     * @returns {string} Hash hexadecimal
      */
     gerarHash(texto) {
         try {
-            // Usa um hash simples para compatibilidade
             let hash = 0;
             for (let i = 0; i < texto.length; i++) {
                 const char = texto.charCodeAt(i);
@@ -51,15 +61,15 @@ class Auth {
 
     /**
      * Verifica credenciais de login
-     * @param {string} usuario - Nome de usuário
-     * @param {string} senha - Senha digitada
-     * @returns {Promise<boolean>} True se autenticado
      */
     async login(usuario, senha) {
         try {
+            console.log('🔑 Tentando login para:', usuario);
+            
             // Verifica se está bloqueado
             if (this.estaBloqueado()) {
-                throw new Error('Muitas tentativas. Aguarde 15 minutos.');
+                const tempo = Math.ceil(this.obterTempoBloqueio() / 60000);
+                throw new Error(`Muitas tentativas. Aguarde ${tempo} minutos.`);
             }
 
             // Verifica usuário
@@ -81,9 +91,11 @@ class Auth {
             this.limparTentativas();
             this.criarSessao();
             
+            console.log('✅ Login realizado com sucesso!');
             return true;
+            
         } catch (error) {
-            console.error('Erro no login:', error);
+            console.error('❌ Erro no login:', error);
             throw error;
         }
     }
@@ -95,12 +107,13 @@ class Auth {
         const sessao = {
             usuario: this.usuario,
             loginTime: Date.now(),
-            expiraEm: Date.now() + (CONFIG.AUTH.SESSION_DURATION || 8 * 60 * 60 * 1000),
+            expiraEm: Date.now() + this.sessionDuration,
             token: this.gerarToken()
         };
         
         try {
             sessionStorage.setItem(this.sessionKey, JSON.stringify(sessao));
+            console.log('✅ Sessão criada');
         } catch (error) {
             console.error('Erro ao criar sessão:', error);
         }
@@ -108,7 +121,6 @@ class Auth {
 
     /**
      * Gera token aleatório
-     * @returns {string} Token aleatório
      */
     gerarToken() {
         try {
@@ -122,7 +134,6 @@ class Auth {
 
     /**
      * Verifica se usuário está autenticado
-     * @returns {boolean} True se autenticado
      */
     estaAutenticado() {
         try {
@@ -132,8 +143,8 @@ class Auth {
                 return false;
             }
             
-            // Verifica se a sessão expirou
             if (Date.now() > sessao.expiraEm) {
+                console.log('⏰ Sessão expirada');
                 this.logout();
                 return false;
             }
@@ -147,7 +158,6 @@ class Auth {
 
     /**
      * Obtém sessão atual
-     * @returns {Object|null} Sessão ou null
      */
     obterSessao() {
         try {
@@ -165,7 +175,9 @@ class Auth {
     logout() {
         try {
             sessionStorage.removeItem(this.sessionKey);
-            localStorage.removeItem(CONFIG.CACHE_KEY || 'pesquisa_preco_cache');
+            sessionStorage.removeItem(this.cacheKey);
+            localStorage.removeItem(this.attemptsKey);
+            console.log('✅ Logout realizado');
         } catch (error) {
             console.error('Erro ao fazer logout:', error);
         }
@@ -181,6 +193,7 @@ class Auth {
             tentativas.count++;
             tentativas.lastAttempt = Date.now();
             localStorage.setItem(this.attemptsKey, JSON.stringify(tentativas));
+            console.log(`⚠️ Tentativa ${tentativas.count} de ${this.maxAttempts}`);
         } catch (error) {
             console.error('Erro ao registrar tentativa:', error);
         }
@@ -188,14 +201,12 @@ class Auth {
 
     /**
      * Obtém tentativas de login
-     * @returns {Object} Tentativas
      */
     obterTentativas() {
         try {
             const tentativasJSON = localStorage.getItem(this.attemptsKey);
             const tentativas = tentativasJSON ? JSON.parse(tentativasJSON) : { count: 0, lastAttempt: 0 };
             
-            // Reseta se passou do tempo de bloqueio
             if (Date.now() - tentativas.lastAttempt > this.lockoutDuration) {
                 return { count: 0, lastAttempt: 0 };
             }
@@ -219,27 +230,23 @@ class Auth {
 
     /**
      * Verifica se está bloqueado
-     * @returns {boolean} True se bloqueado
      */
     estaBloqueado() {
         const tentativas = this.obterTentativas();
         
         if (tentativas.count >= this.maxAttempts) {
             const tempoRestante = this.lockoutDuration - (Date.now() - tentativas.lastAttempt);
-            
             if (tempoRestante > 0) {
                 return true;
             } else {
                 this.limparTentativas();
             }
         }
-        
         return false;
     }
 
     /**
      * Obtém tempo restante de bloqueio
-     * @returns {number} Tempo em milissegundos
      */
     obterTempoBloqueio() {
         const tentativas = this.obterTentativas();
@@ -251,8 +258,6 @@ class Auth {
 
     /**
      * Sanitiza input do usuário
-     * @param {string} input - Input do usuário
-     * @returns {string} Input sanitizado
      */
     sanitizarInput(input) {
         if (!input) return '';
@@ -260,23 +265,20 @@ class Auth {
     }
 }
 
-// Instância global de autenticação
+// Cria a instância global
 let auth = null;
 
-// Aguarda o CONFIG ser carregado
 try {
     auth = new Auth();
-    console.log('✅ Auth instanciado com sucesso');
+    console.log('✅ Auth instanciado com sucesso!');
 } catch (error) {
     console.error('❌ Erro ao instanciar Auth:', error);
-    // Cria uma instância com valores padrão
-    auth = new (class AuthFallback {
-        constructor() {
-            this.usuario = 'PriceFribal';
-            this.sessionKey = 'pesquisa_preco_session';
-            this.attemptsKey = 'pesquisa_preco_attempts';
-            console.log('⚠️ Auth usando fallback (CONFIG não disponível)');
-        }
+    
+    // Fallback de emergência
+    auth = {
+        usuario: 'PriceFribal',
+        sessionKey: 'pesquisa_preco_session',
+        attemptsKey: 'pesquisa_preco_attempts',
         async login(usuario, senha) {
             if (usuario === 'PriceFribal' && senha === 'Fr1b4l') {
                 sessionStorage.setItem(this.sessionKey, JSON.stringify({
@@ -287,18 +289,22 @@ try {
                 return true;
             }
             throw new Error('Usuário ou senha incorretos');
-        }
+        },
         estaAutenticado() {
             return !!sessionStorage.getItem(this.sessionKey);
-        }
+        },
         logout() {
             sessionStorage.removeItem(this.sessionKey);
             window.location.reload();
-        }
+        },
         sanitizarInput(input) {
             return String(input || '').replace(/[<>]/g, '').trim();
-        }
-        estaBloqueado() { return false; }
+        },
+        estaBloqueado() { return false; },
         obterTempoBloqueio() { return 0; }
-    })();
+    };
+    console.log('⚠️ Auth usando fallback de emergência');
 }
+
+// Exporta para uso global
+window.auth = auth;
