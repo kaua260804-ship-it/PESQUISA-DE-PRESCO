@@ -1,50 +1,32 @@
 /**
- * CONFIG.JS
- * Configurações globais do sistema
+ * CONFIG.JS - VERSÃO COM GOOGLE SHEETS API
  */
 
 const CONFIG = {
-    // URL do Google Apps Script - ATUALIZADA
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxxnwpuKSC7pRINbV8g9CZWYPhJXlAbUnSGSXJGe2p82nzATMPG30Vr0eVIkIlItwNeVw/exec',
+    // Google Sheets API
+    SHEETS_API_KEY: 'AIzaSyDObnjtRPUZc7_oiEWA41MNeej_IXkklr0',
+    SPREADSHEET_ID: '19vs25NDrGCbcfB3sNSmLjPlDS92sbOzwlwjUjmjqPd8',
     
-    // Configurações de autenticação
-    AUTH: {
-        SESSION_DURATION: 8 * 60 * 60 * 1000, // 8 horas
-        MAX_LOGIN_ATTEMPTS: 5,
-        LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minutos
-        SESSION_KEY: 'pesquisa_preco_session',
-        ATTEMPTS_KEY: 'pesquisa_preco_attempts'
-    },
+    // Nomes das abas
+    SHEET_ARVORE: 'ARVORE',
+    SHEET_BASE: 'BASE',
     
-    // Cache - SEM LIMITE (usa IndexedDB para grandes volumes)
-    CACHE_TTL: 24 * 60 * 60 * 1000, // 24 horas
+    // Timeout
+    TIMEOUT: 15000, // 15 segundos (bem mais rápido)
+    
+    // Cache local (IndexedDB)
+    CACHE_DURATION: 60 * 60 * 1000, // 1 hora
     CACHE_KEY: 'pesquisa_preco_cache',
-    CACHE_DB_NAME: 'pesquisa_preco_db',
-    CACHE_DB_VERSION: 1,
-    CACHE_STORE_NAME: 'produtos',
     
     // Configurações do scanner
     SCANNER_CONFIG: {
         fps: 10,
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
-        formatsToSupport: [
-            'EAN-13',
-            'EAN-8', 
-            'UPC-A',
-            'UPC-E',
-            'Code 128',
-            'Code 39',
-            'ITF',
-            'Codabar'
-        ]
+        formatsToSupport: ['EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'Code 128', 'Code 39']
     },
     
-    // UI
     TOAST_DURATION: 3000,
-    LIMITE_BUSCA: 50,
-    
-    // Áudio
     BEEP_CONFIG: {
         duration: 0.2,
         volume: 0.5,
