@@ -1,148 +1,77 @@
-/**
- * API.JS
- * Comunicação com timeout e logs detalhados
- */
-
+// api.js - Versão usando Google Sheets API diretamente
 class API {
     constructor() {
-        this.baseUrl = CONFIG.APPS_SCRIPT_URL;
-        this.timeout = 60000; // 60 segundos (aumentado para base grande)
+        // Usa a API do Google Sheets diretamente
+        this.sheetId = '19vs25NDrGCbcfB3sNSmLjPlDS92sbOzwlwjUjmjqPd8';
+        this.baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${this.sheetId}/values`;
+        // Precisa de uma chave de API
+        this.apiKey = 'SUA_CHAVE_API_AQUI';
     }
 
-    /**
-     * Faz fetch com timeout
-     */
-    async fetchComTimeout(url) {
-        console.log('⏳ Iniciando requisição para:', url);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-        
-        try {
-            const response = await fetch(url, {
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            console.log('✅ Requisição finalizada. Status:', response.status);
-            return response;
-        } catch (error) {
-            clearTimeout(timeoutId);
-            if (error.name === 'AbortError') {
-                console.error('❌ Timeout após', this.timeout, 'ms');
-                throw new Error('Tempo esgotado. Tente novamente.');
-            }
-            console.error('❌ Erro na requisição:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Busca por EAN
-     */
     async buscarPorEAN(ean) {
         try {
-            const url = `${this.baseUrl}?action=buscarPorEAN&ean=${encodeURIComponent(ean)}`;
-            console.log('🔍 Buscando por EAN:', ean);
+            // Usa a API de Query do Google Sheets
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.sheetId}/values/BASE!A:I?key=${this.apiKey}`;
             
-            const response = await this.fetchComTimeout(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
+            const response = await fetch(url);
             const data = await response.json();
-            console.log('📦 Resposta recebida:', data);
             
-            if (data.success === false) {
-                return null;
+            // Filtra pelo EAN
+            const rows = data.values || [];
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const codAcesso = row[5]; // Coluna F
+                if (codAcesso === ean) {
+                    // Encontrou, busca na ARVORE
+                    const seqProd = row[0];
+                    const arvore = await this.buscarArvore(seqProd);
+                    return { ...this.formatarProduto(row), ...arvore };
+                }
             }
-            
-            return data.data;
+            return null;
         } catch (error) {
-            console.error('❌ Erro ao buscar por EAN:', error);
+            console.error('Erro:', error);
             throw error;
         }
     }
 
-    /**
-     * Busca por SEQ
-     */
-    async buscarPorSeq(seq) {
+    async buscarArvore(seqProd) {
         try {
-            const url = `${this.baseUrl}?action=buscarPorSeq&seq=${encodeURIComponent(seq)}`;
-            console.log('🔍 Buscando por SEQ:', seq);
-            
-            const response = await this.fetchComTimeout(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.sheetId}/values/ARVORE!A:K?key=${this.apiKey}`;
+            const response = await fetch(url);
             const data = await response.json();
             
-            if (data.success === false) {
-                return null;
+            const rows = data.values || [];
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (row[1] === seqProd) { // Coluna B = SEQ PROD
+                    return {
+                        seqFml: row[0] || '',
+                        desc: row[2] || '',
+                        divisao: row[3] || '',
+                        comprador: row[4] || '',
+                        categoria: row[5] || '',
+                        grupo: row[6] || ''
+                    };
+                }
             }
-            
-            return data.data;
+            return {};
         } catch (error) {
-            console.error('❌ Erro ao buscar por SEQ:', error);
-            throw error;
+            console.error('Erro ao buscar ARVORE:', error);
+            return {};
         }
     }
 
-    /**
-     * Busca por descrição
-     */
-    async buscarPorDescricao(termo) {
-        try {
-            const url = `${this.baseUrl}?action=buscarPorDescricao&termo=${encodeURIComponent(termo)}`;
-            
-            const response = await this.fetchComTimeout(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success === false) {
-                return [];
-            }
-            
-            return data.data || [];
-        } catch (error) {
-            console.error('❌ Erro ao buscar por descrição:', error);
-            return [];
-        }
-    }
-
-    /**
-     * Atualiza campo
-     */
-    async atualizarCampo(seqProd, campo, valor) {
-        try {
-            const url = `${this.baseUrl}?action=atualizar&seqProd=${encodeURIComponent(seqProd)}&campo=${encodeURIComponent(campo)}&valor=${encodeURIComponent(valor)}`;
-            console.log('✏️ Atualizando campo:', campo, 'para:', valor);
-            
-            const response = await this.fetchComTimeout(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success === false) {
-                throw new Error(data.message || 'Erro ao atualizar');
-            }
-            
-            console.log('✅ Atualização realizada com sucesso');
-            return data;
-        } catch (error) {
-            console.error('❌ Erro ao atualizar campo:', error);
-            throw error;
-        }
+    formatarProduto(row) {
+        return {
+            seqProd: row[0] || '',
+            desc: row[1] || '',
+            tipoCodigo: row[3] || '',
+            qtdeEmbalagem: row[4] || '',
+            codAcesso: row[5] || '',
+            observacao: row[6] || '',
+            nossoPreco: row[7] || '',
+            precoConcorrente: row[8] || ''
+        };
     }
 }
-
-const api = new API();
