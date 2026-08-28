@@ -376,6 +376,7 @@ class API {
             const url = `${CONFIG.APPS_SCRIPT_URL}?action=atualizarArvore&seqProd=${encodeURIComponent(seqProd)}&campo=${encodeURIComponent(campoReal)}&valor=${encodeURIComponent(valor)}`;
             
             console.log('✏️ Atualizando campo na ARVORE:', campoReal, 'para:', valor);
+            console.log('📡 URL:', url);
             
             controller = new AbortController();
             timeoutId = setTimeout(() => controller.abort(), this.timeout);
@@ -391,6 +392,7 @@ class API {
             }
             
             const data = await response.json();
+            console.log('📦 Resposta do Apps Script:', data);
             
             if (data.success === false) {
                 throw new Error(data.message || 'Erro ao atualizar');
