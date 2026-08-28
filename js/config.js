@@ -1,5 +1,6 @@
 /**
  * CONFIG.JS - VERSÃO COM GOOGLE SHEETS API
+ * Estrutura otimizada com ARVORE como base
  */
 
 const CONFIG = {
@@ -11,12 +12,37 @@ const CONFIG = {
     SHEET_ARVORE: 'ARVORE',
     SHEET_BASE: 'BASE',
     
-    // Timeout
-    TIMEOUT: 15000, // 15 segundos (bem mais rápido)
+    // Mapeamento das colunas da ARVORE
+    ARVORE_COLUNAS: {
+        SEQ_FML: 0,
+        SEQ_PROD: 1,
+        DESC: 2,
+        DIVISAO: 3,
+        COMPRADOR: 4,
+        CATEGORIA: 5,
+        GRUPO: 6,
+        SUBGRUPO: 7,
+        SUBGRUPO_1: 8,
+        SUBGRUPO_2: 9,
+        SUBGRUPO_3: 10,
+        NOSSO_PRECO: 11,
+        PRECO_CONCORRENTE: 12,
+        OBSERVACAO: 13
+    },
     
-    // Cache local (IndexedDB)
+    // Mapeamento das colunas da BASE
+    BASE_COLUNAS: {
+        SEQ_PROD: 0,
+        PRODUTO: 1,
+        TIPO_CODIGO: 2,
+        COD_ACESSO: 3
+    },
+    
+    // Timeout
+    TIMEOUT: 15000, // 15 segundos
+    
+    // Cache local
     CACHE_DURATION: 60 * 60 * 1000, // 1 hora
-    CACHE_KEY: 'pesquisa_preco_cache',
     
     // Configurações do scanner
     SCANNER_CONFIG: {
