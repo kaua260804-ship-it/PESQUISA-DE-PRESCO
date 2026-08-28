@@ -70,7 +70,7 @@
             formatsToSupport: ['EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'Code 128', 'Code 39']
         },
         
-        TOAST_DURATION: 3000,
+        TOAST_DURATION: 8000,
         BEEP_CONFIG: {
             duration: 0.2,
             volume: 0.5,
