@@ -231,7 +231,7 @@ class UILogin {
             // Mostra aplicação
             this.mostrarAplicacao();
             
-            // Inicializa UI (sem carregar dados)
+            // Inicializa UI com pré-carregamento
             this.inicializarAplicacao();
             
             ui.showToast('Login realizado com sucesso!', 'success');
@@ -281,15 +281,28 @@ class UILogin {
     }
 
     /**
-     * Inicializa aplicação após login (SEM carregar dados)
+     * Inicializa aplicação após login COM PRÉ-CARREGAMENTO
      */
     inicializarAplicacao() {
         try {
             // Inicializa a UI
             ui.initialize();
             
-            // Garante que loading está escondido
-            ui.showLoading(false);
+            // Mostra loading enquanto carrega os dados
+            ui.showLoading(true);
+            
+            // PRÉ-CARREGA OS DADOS EM BACKGROUND
+            api.preCarregar()
+                .then(() => {
+                    console.log('✅ Dados carregados em background com sucesso!');
+                    ui.showLoading(false);
+                    ui.showToast('Dados carregados!', 'success');
+                })
+                .catch((err) => {
+                    console.warn('⚠️ Erro ao pré-carregar dados:', err);
+                    ui.showLoading(false);
+                    ui.showToast('Dados carregados parcialmente', 'warning');
+                });
             
             // Foca no input de código
             const inputCodigo = document.getElementById('inputCodigo');
