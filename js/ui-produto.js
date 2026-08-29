@@ -1,9 +1,13 @@
 /**
  * UI-PRODUTO.JS
- * Gerenciamento de produtos e edição
+ * Gerenciamento de produtos e edição com salvamento local
  */
 
 Object.assign(UI.prototype, {
+    // Armazena alterações pendentes
+    alteracoesPendentes: [],
+    produtosAlterados: {},
+
     /**
      * Processa um código de barras (EAN ou SEQ)
      */
@@ -50,33 +54,95 @@ Object.assign(UI.prototype, {
     exibirProduto(produto) {
         this.produtoAtual = produto;
         
+        // Preenche informações básicas
         document.getElementById('produtoCodigo').textContent = produto.seqProd || 'N/A';
-        document.getElementById('produtoDescricao').textContent = produto.desc || produto.descricao || 'N/A';
+        document.getElementById('produtoDescricao').textContent = produto.desc || 'N/A';
         document.getElementById('produtoComprador').textContent = produto.comprador || 'N/A';
         document.getElementById('produtoCategoria').textContent = produto.categoria || 'N/A';
         document.getElementById('produtoGrupo').textContent = produto.grupo || 'N/A';
-        document.getElementById('produtoSubgrupo').textContent = produto.divisao || 'N/A';
+        document.getElementById('produtoSubgrupo').textContent = produto.subgrupo || 'N/A';
         document.getElementById('produtoTipoCodigo').textContent = produto.tipoCodigo || 'N/A';
         document.getElementById('produtoCodAcesso').textContent = produto.codAcesso || 'N/A';
+        
+        // Verifica se há alterações pendentes para este produto
+        this.carregarAlteracoesPendentes(produto.seqProd);
         
         this.atualizarDisplayEditaveis(produto);
         
         const card = document.getElementById('produtoCard');
         card.classList.remove('hidden');
+        
+        // Atualiza botão de enviar alterações
+        this.atualizarBotaoEnviar();
+    },
+
+    /**
+     * Carrega alterações pendentes do localStorage
+     */
+    carregarAlteracoesPendentes(seqProd) {
+        try {
+            const saved = localStorage.getItem('alteracoes_pendentes');
+            if (saved) {
+                const todas = JSON.parse(saved);
+                this.alteracoesPendentes = todas[seqProd] || [];
+                this.produtosAlterados = todas;
+            } else {
+                this.alteracoesPendentes = [];
+                this.produtosAlterados = {};
+            }
+        } catch (error) {
+            console.error('Erro ao carregar alterações:', error);
+            this.alteracoesPendentes = [];
+            this.produtosAlterados = {};
+        }
+    },
+
+    /**
+     * Salva alterações pendentes no localStorage
+     */
+    salvarAlteracoesPendentes() {
+        try {
+            localStorage.setItem('alteracoes_pendentes', JSON.stringify(this.produtosAlterados));
+        } catch (error) {
+            console.error('Erro ao salvar alterações:', error);
+        }
     },
 
     /**
      * Atualiza display dos campos editáveis
      */
     atualizarDisplayEditaveis(produto) {
+        const seqProd = produto.seqProd;
+        const pendentes = this.produtosAlterados[seqProd] || [];
+        
+        // Busca valor pendente ou valor atual
+        const getValor = (campo) => {
+            const pendente = pendentes.find(p => p.campo === campo);
+            if (pendente) return pendente.valor;
+            return produto[campo] || '';
+        };
+        
+        const nossoPreco = getValor('nossoPreco');
+        const precoConcorrente = getValor('precoConcorrente');
+        const observacao = getValor('observacao');
+        
         document.getElementById('displayNossoPreco').textContent = 
-            produto.nossoPreco ? `R$ ${parseFloat(produto.nossoPreco).toFixed(2)}` : 'Não informado';
+            nossoPreco ? `R$ ${parseFloat(nossoPreco).toFixed(2)}` : 'Não informado';
         
         document.getElementById('displayPrecoConcorrente').textContent = 
-            produto.precoConcorrente ? `R$ ${parseFloat(produto.precoConcorrente).toFixed(2)}` : 'Não informado';
+            precoConcorrente ? `R$ ${parseFloat(precoConcorrente).toFixed(2)}` : 'Não informado';
         
         document.getElementById('displayObservacao').textContent = 
-            produto.observacao || 'Sem observações';
+            observacao || 'Sem observações';
+        
+        // Marca campos com alteração pendente
+        ['nossoPreco', 'precoConcorrente', 'observacao'].forEach(campo => {
+            const item = document.querySelector(`.editable-item[data-campo="${campo}"]`);
+            if (item) {
+                const temPendente = pendentes.some(p => p.campo === campo);
+                item.classList.toggle('pending', temPendente);
+            }
+        });
     },
 
     /**
@@ -89,6 +155,9 @@ Object.assign(UI.prototype, {
         }
         
         this.isEditando = true;
+        const seqProd = this.produtoAtual.seqProd;
+        const pendentes = this.produtosAlterados[seqProd] || [];
+        const pendente = pendentes.find(p => p.campo === campo);
         
         const displayElement = document.getElementById(`display${this.capitalizar(campo)}`);
         if (displayElement) displayElement.classList.add('hidden');
@@ -98,198 +167,14 @@ Object.assign(UI.prototype, {
             const container = inputElement.closest('.editable-input');
             if (container) {
                 container.classList.remove('hidden');
-                inputElement.value = this.produtoAtual[campo] || '';
+                // Usa valor pendente ou atual
+                inputElement.value = pendente ? pendente.valor : (this.produtoAtual[campo] || '');
                 inputElement.focus({ preventScroll: true });
             }
         }
     },
 
     /**
-     * Salva edição de um campo
+     * Salva edição LOCALMENTE (não envia para API)
      */
-    async salvarEdicao(campo) {
-        try {
-            const inputElement = document.getElementById(`input${this.capitalizar(campo)}`);
-            const novoValor = inputElement.value.trim();
-            const valorAntigo = this.produtoAtual[campo] || '';
-            
-            if (!this.produtoAtual) {
-                throw new Error('Nenhum produto selecionado');
-            }
-            
-            this.showLoading(true);
-            
-            await api.atualizarCampo(this.produtoAtual.seqProd, campo, novoValor);
-            
-            this.produtoAtual[campo] = novoValor;
-            this.atualizarDisplayEditaveis(this.produtoAtual);
-            
-            this.registrarAlteracao(campo, valorAntigo, novoValor);
-            
-            this.finalizarEdicao(campo);
-            
-            this.showLoading(false);
-            this.showToast('Alteração salva com sucesso!', 'success');
-        } catch (error) {
-            this.showLoading(false);
-            this.showToast('Erro ao salvar alteração!', 'error');
-            console.error('Erro ao salvar:', error);
-        }
-    },
-
-    /**
-     * Registra alteração no histórico
-     */
-    registrarAlteracao(campo, valorAntigo, novoValor) {
-        const campos = {
-            'nossoPreco': 'Nosso Preço',
-            'precoConcorrente': 'Preço Concorrente',
-            'observacao': 'Observação'
-        };
-        
-        const alteracao = {
-            campo: campos[campo] || campo,
-            valorAntigo: valorAntigo || 'Vazio',
-            valorNovo: novoValor || 'Vazio',
-            timestamp: new Date().toISOString()
-        };
-        
-        if (!this.produtoAtual.alteracoes) {
-            this.produtoAtual.alteracoes = [];
-        }
-        this.produtoAtual.alteracoes.push(alteracao);
-        
-        if (this.historico.length > 0) {
-            this.historico[0].alteracoes = this.produtoAtual.alteracoes;
-            this.salvarHistorico();
-            this.renderizarHistorico();
-        }
-    },
-
-    /**
-     * Cancela edição de um campo
-     */
-    cancelarEdicao(campo) {
-        this.finalizarEdicao(campo);
-        this.showToast('Edição cancelada', 'info');
-    },
-
-    /**
-     * Finaliza edição de um campo
-     */
-    finalizarEdicao(campo) {
-        this.isEditando = false;
-        
-        const displayElement = document.getElementById(`display${this.capitalizar(campo)}`);
-        if (displayElement) displayElement.classList.remove('hidden');
-        
-        const inputElement = document.getElementById(`input${this.capitalizar(campo)}`);
-        if (inputElement) {
-            const container = inputElement.closest('.editable-input');
-            if (container) container.classList.add('hidden');
-        }
-    },
-
-    /**
-     * Fecha o card do produto
-     */
-    fecharCard() {
-        document.getElementById('produtoCard').classList.add('hidden');
-        this.produtoAtual = null;
-        this.isEditando = false;
-    },
-
-    /**
-     * Busca produtos por descrição
-     */
-    async buscarProdutos(termo) {
-        if (!termo || termo.length < 2) {
-            const container = document.getElementById('resultadosBusca');
-            if (container) container.classList.add('hidden');
-            return;
-        }
-        
-        this.showLoading(true);
-        const resultados = await api.buscarPorDescricao(termo);
-        this.showLoading(false);
-        
-        this.exibirResultadosBusca(resultados);
-    },
-
-    /**
-     * Exibe resultados da busca
-     */
-    exibirResultadosBusca(resultados) {
-        const container = document.getElementById('resultadosBusca');
-        if (!container) return;
-        
-        if (resultados.length === 0) {
-            container.innerHTML = '<div class="search-result-item">Nenhum produto encontrado</div>';
-        } else {
-            container.innerHTML = resultados.map(produto => `
-                <div class="search-result-item" data-seqprod="${produto.seqProd || ''}">
-                    <strong>${produto.seqProd || 'N/A'}</strong> - ${produto.desc || 'Sem descrição'}
-                    <div style="font-size: 0.9rem; color: #666;">
-                        ${produto.codAcesso ? 'EAN: ' + produto.codAcesso : ''}
-                        ${produto.seqFml ? ' | FML: ' + produto.seqFml : ''}
-                    </div>
-                </div>
-            `).join('');
-            
-            container.querySelectorAll('.search-result-item[data-seqprod]').forEach(item => {
-                item.addEventListener('click', () => {
-                    this.processarCodigo(item.dataset.seqprod);
-                    container.classList.add('hidden');
-                    document.getElementById('inputBusca').value = '';
-                });
-            });
-        }
-        
-        container.classList.remove('hidden');
-    },
-
-    /**
-     * Ativa/desativa o scanner
-     */
-    async toggleScanner() {
-        const scannerArea = document.getElementById('scannerArea');
-        
-        if (scannerArea.classList.contains('hidden')) {
-            try {
-                const temCamera = await scanner.hasCamera();
-                if (!temCamera) {
-                    this.showToast('Dispositivo não possui câmera!', 'error');
-                    return;
-                }
-                
-                scannerArea.classList.remove('hidden');
-                this.scannerAtivo = true;
-                
-                await scanner.initialize('qr-reader');
-                await scanner.start((codigo) => this.processarCodigo(codigo));
-                
-                this.showToast('Scanner ativado!', 'info');
-            } catch (error) {
-                this.showToast('Erro ao ativar scanner!', 'error');
-                scannerArea.classList.add('hidden');
-                this.scannerAtivo = false;
-            }
-        } else {
-            await this.stopScanner();
-        }
-    },
-
-    /**
-     * Para o scanner
-     */
-    async stopScanner() {
-        try {
-            await scanner.stop();
-            document.getElementById('scannerArea').classList.add('hidden');
-            this.scannerAtivo = false;
-            this.showToast('Scanner desativado', 'info');
-        } catch (error) {
-            console.error('Erro ao parar scanner:', error);
-        }
-    }
-});
+    sal
