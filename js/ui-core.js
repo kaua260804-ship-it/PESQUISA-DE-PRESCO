@@ -1,6 +1,6 @@
 /**
  * UI-CORE.JS
- * Núcleo da interface do usuário - COM MÉTODOS DE HISTÓRICO INTEGRADOS
+ * Núcleo da interface do usuário - COMPLETO
  */
 
 class UI {
@@ -17,6 +17,10 @@ class UI {
         this.alteracoesPendentes = [];
         this.produtosAlterados = {};
     }
+
+    // =============================================
+    // INICIALIZAÇÃO
+    // =============================================
 
     /**
      * Inicializa a interface
@@ -40,7 +44,122 @@ class UI {
     }
 
     // =============================================
-    // MÉTODOS DO HISTÓRICO (INTEGRADOS)
+    // EVENTOS
+    // =============================================
+
+    /**
+     * Liga os eventos aos elementos HTML
+     */
+    bindEvents() {
+        console.log('🔗 Vinculando eventos...');
+        
+        // Input de código
+        const inputCodigo = document.getElementById('inputCodigo');
+        if (inputCodigo) {
+            inputCodigo.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && inputCodigo.value.trim()) {
+                    this.processarCodigo(inputCodigo.value.trim());
+                }
+            });
+        }
+
+        // Botão de escanear
+        const btnScan = document.getElementById('btnScan');
+        if (btnScan) {
+            btnScan.addEventListener('click', () => this.toggleScanner());
+        }
+
+        // Botão de parar scanner
+        const btnStopScan = document.getElementById('btnStopScan');
+        if (btnStopScan) {
+            btnStopScan.addEventListener('click', () => this.stopScanner());
+        }
+
+        // Busca com debounce
+        const inputBusca = document.getElementById('inputBusca');
+        if (inputBusca) {
+            inputBusca.addEventListener('input', (e) => {
+                clearTimeout(this.buscaTimeout);
+                const termo = e.target.value;
+                this.buscaTimeout = setTimeout(() => this.buscarProdutos(termo), 300);
+            });
+            
+            inputBusca.addEventListener('focus', () => {
+                if (inputBusca.value.trim()) {
+                    this.buscarProdutos(inputBusca.value.trim());
+                }
+            });
+        }
+        
+        // Fecha resultados da busca quando clica fora
+        document.addEventListener('click', (e) => {
+            const searchResults = document.getElementById('resultadosBusca');
+            const inputBusca = document.getElementById('inputBusca');
+            if (searchResults && inputBusca && 
+                e.target !== inputBusca && !searchResults.contains(e.target)) {
+                searchResults.classList.add('hidden');
+            }
+        });
+
+        // Fechar card
+        const btnFecharCard = document.getElementById('btnFecharCard');
+        if (btnFecharCard) {
+            btnFecharCard.addEventListener('click', () => this.fecharCard());
+        }
+
+        // Botões de edição
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', () => this.iniciarEdicao(btn.dataset.campo));
+        });
+
+        // Botões de salvar (salvam localmente)
+        document.querySelectorAll('.btn-save').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const campo = btn.dataset.campo;
+                this.salvarEdicaoLocal(campo);
+            });
+        });
+
+        // Botões de cancelar
+        document.querySelectorAll('.btn-cancel').forEach(btn => {
+            btn.addEventListener('click', () => this.cancelarEdicao(btn.dataset.campo));
+        });
+
+        // Botão de enviar todas alterações
+        const btnEnviar = document.getElementById('btnEnviarAlteracoes');
+        if (btnEnviar) {
+            btnEnviar.addEventListener('click', () => this.enviarTodasAlteracoes());
+        }
+
+        // Histórico
+        const btnLimparHistorico = document.getElementById('btnLimparHistorico');
+        if (btnLimparHistorico) {
+            btnLimparHistorico.addEventListener('click', () => this.limparHistorico());
+        }
+
+        const btnExportarCSV = document.getElementById('btnExportarCSV');
+        if (btnExportarCSV) {
+            btnExportarCSV.addEventListener('click', () => this.exportarCSV());
+        }
+
+        const btnExportarPDF = document.getElementById('btnExportarPDF');
+        if (btnExportarPDF) {
+            btnExportarPDF.addEventListener('click', () => this.exportarPDF());
+        }
+
+        // Botão de refresh
+        const btnRefresh = document.getElementById('btnRefresh');
+        if (btnRefresh) {
+            btnRefresh.addEventListener('click', () => {
+                this.showToast('Dados sempre atualizados da planilha!', 'info');
+            });
+        }
+
+        console.log('✅ Eventos vinculados');
+    }
+
+    // =============================================
+    // MÉTODOS DO HISTÓRICO
     // =============================================
 
     /**
@@ -68,7 +187,6 @@ class UI {
     salvarHistorico() {
         try {
             localStorage.setItem('historico_leituras', JSON.stringify(this.historico));
-            console.log(`💾 Histórico salvo: ${this.historico.length} itens`);
         } catch (error) {
             console.error('Erro ao salvar histórico:', error);
         }
@@ -96,25 +214,21 @@ class UI {
             }
         };
         
-        // Verifica se o produto já está no histórico (atualiza se existir)
+        // Verifica se o produto já está no histórico
         const existenteIndex = this.historico.findIndex(h => h.seqProd === itemHistorico.seqProd);
         if (existenteIndex > -1) {
-            // Atualiza o existente com as novas informações
             this.historico[existenteIndex] = {
                 ...this.historico[existenteIndex],
                 ...itemHistorico,
-                // Mantém as alterações antigas e adiciona as novas
                 alteracoes: [...this.historico[existenteIndex].alteracoes, ...itemHistorico.alteracoes]
             };
         } else {
             this.historico.unshift(itemHistorico);
-            // Limita a 50 itens
             if (this.historico.length > 50) this.historico.pop();
         }
         
         this.salvarHistorico();
         this.renderizarHistorico();
-        console.log(`📝 Produto ${itemHistorico.seqProd} adicionado ao histórico`);
     }
 
     /**
@@ -139,17 +253,14 @@ class UI {
             const hora = data.toLocaleTimeString('pt-BR');
             const dataFormatada = data.toLocaleDateString('pt-BR');
             
-            // Mapeia os nomes dos campos para exibição
             const campoNomes = {
                 'nossoPreco': 'Nosso Preço',
                 'precoConcorrente': 'Preço Concorrente',
                 'observacao': 'Observação'
             };
             
-            // Gera HTML das alterações
             let alteracoesHTML = '';
             if (item.alteracoes && item.alteracoes.length > 0) {
-                // Pega apenas as últimas 3 alterações para não poluir
                 const ultimasAlteracoes = item.alteracoes.slice(-3);
                 alteracoesHTML = `
                     <div class="alteracoes-lista">
@@ -166,7 +277,6 @@ class UI {
                 `;
             }
             
-            // Mostra os valores atuais do produto
             let valoresAtuaisHTML = '';
             if (item.valoresAtuais) {
                 const v = item.valoresAtuais;
@@ -195,12 +305,9 @@ class UI {
             `;
         }).join('');
         
-        // Adiciona event listeners para abrir o produto ao clicar
         container.querySelectorAll('.historico-item[data-seqprod]').forEach(item => {
             item.addEventListener('click', () => {
-                if (typeof this.processarCodigo === 'function') {
-                    this.processarCodigo(item.dataset.seqprod);
-                }
+                this.processarCodigo(item.dataset.seqprod);
             });
         });
     }
@@ -232,7 +339,7 @@ class UI {
         }
         
         try {
-            let csv = '\uFEFF'; // BOM para UTF-8
+            let csv = '\uFEFF';
             csv += 'Data;Hora;SEQ PROD;Descrição;Preço;Concorrente;Observação;Alterações\n';
             
             this.historico.forEach(item => {
@@ -374,7 +481,6 @@ class UI {
                 this.produtosAlterados = JSON.parse(saved);
                 const total = Object.values(this.produtosAlterados).reduce((acc, arr) => acc + arr.length, 0);
                 console.log(`📝 ${total} alterações pendentes carregadas`);
-                this.atualizarBotaoEnviar();
             } else {
                 this.produtosAlterados = {};
             }
@@ -382,6 +488,7 @@ class UI {
             console.error('Erro ao carregar alterações:', error);
             this.produtosAlterados = {};
         }
+        this.atualizarBotaoEnviar();
     }
 
     /**
@@ -390,10 +497,10 @@ class UI {
     salvarAlteracoesPendentes() {
         try {
             localStorage.setItem('alteracoes_pendentes', JSON.stringify(this.produtosAlterados));
-            this.atualizarBotaoEnviar();
         } catch (error) {
             console.error('Erro ao salvar alterações:', error);
         }
+        this.atualizarBotaoEnviar();
     }
 
     /**
@@ -408,7 +515,7 @@ class UI {
             if (total > 0) {
                 btn.disabled = false;
                 btn.style.display = 'flex';
-                btn.innerHTML = `<i class="fas fa-upload"></i> Enviar Alterações <span class="badge" id="badgeAlteracoes">${total}</span>`;
+                if (badge) badge.textContent = total;
             } else {
                 btn.disabled = true;
                 btn.style.display = 'none';
@@ -417,7 +524,7 @@ class UI {
     }
 
     /**
-     * Salva edição LOCALMENTE (não envia para API)
+     * Salva edição LOCALMENTE
      */
     salvarEdicaoLocal(campo) {
         if (!this.produtoAtual) {
@@ -643,107 +750,8 @@ class UI {
     }
 
     // =============================================
-    // MÉTODOS DE BUSCA E SCANNER
+    // MÉTODOS DE BUSCA E PRODUTO
     // =============================================
-
-    /**
-     * Busca produtos por descrição
-     */
-    async buscarProdutos(termo) {
-        if (!termo || termo.length < 2) {
-            const container = document.getElementById('resultadosBusca');
-            if (container) container.classList.add('hidden');
-            return;
-        }
-        
-        this.showLoading(true);
-        const resultados = await api.buscarPorDescricao(termo);
-        this.showLoading(false);
-        
-        this.exibirResultadosBusca(resultados);
-    }
-
-    /**
-     * Exibe resultados da busca
-     */
-    exibirResultadosBusca(resultados) {
-        const container = document.getElementById('resultadosBusca');
-        if (!container) return;
-        
-        if (resultados.length === 0) {
-            container.innerHTML = '<div class="search-result-item">Nenhum produto encontrado</div>';
-        } else {
-            container.innerHTML = resultados.map(produto => `
-                <div class="search-result-item" data-seqprod="${produto.seqProd || ''}">
-                    <strong>${produto.seqProd || 'N/A'}</strong> - ${produto.desc || 'Sem descrição'}
-                    <div style="font-size: 0.9rem; color: #666;">
-                        ${produto.comprador ? 'Comprador: ' + produto.comprador : ''}
-                    </div>
-                </div>
-            `).join('');
-            
-            container.querySelectorAll('.search-result-item[data-seqprod]').forEach(item => {
-                item.addEventListener('click', () => {
-                    if (typeof this.processarCodigo === 'function') {
-                        this.processarCodigo(item.dataset.seqprod);
-                    }
-                    container.classList.add('hidden');
-                    document.getElementById('inputBusca').value = '';
-                });
-            });
-        }
-        
-        container.classList.remove('hidden');
-    }
-
-    /**
-     * Ativa/desativa o scanner
-     */
-    async toggleScanner() {
-        const scannerArea = document.getElementById('scannerArea');
-        
-        if (scannerArea.classList.contains('hidden')) {
-            try {
-                const temCamera = await scanner.hasCamera();
-                if (!temCamera) {
-                    this.showToast('Dispositivo não possui câmera!', 'error');
-                    return;
-                }
-                
-                scannerArea.classList.remove('hidden');
-                this.scannerAtivo = true;
-                
-                await scanner.initialize('qr-reader');
-                await scanner.start((codigo) => {
-                    if (typeof this.processarCodigo === 'function') {
-                        this.processarCodigo(codigo);
-                    }
-                });
-                
-                this.showToast('Scanner ativado!', 'info');
-            } catch (error) {
-                this.showToast('Erro ao ativar scanner!', 'error');
-                scannerArea.classList.add('hidden');
-                this.scannerAtivo = false;
-            }
-        } else {
-            await this.stopScanner();
-        }
-    }
-
-    /**
-     * Para o scanner
-     */
-    async stopScanner() {
-        try {
-            await scanner.stop();
-            document.getElementById('scannerArea').classList.add('hidden');
-            this.scannerAtivo = false;
-            this.showToast('Scanner desativado', 'info');
-        } catch (error) {
-            console.error('Erro ao parar scanner:', error);
-        }
-    }
 
     /**
      * Processa um código de barras (EAN ou SEQ)
@@ -798,12 +806,108 @@ class UI {
         document.getElementById('produtoTipoCodigo').textContent = produto.tipoCodigo || 'N/A';
         document.getElementById('produtoCodAcesso').textContent = produto.codAcesso || 'N/A';
         
-        this.carregarAlteracoesPendentes();
         this.atualizarDisplayEditaveis(produto);
         this.atualizarBotaoEnviar();
         
         const card = document.getElementById('produtoCard');
         card.classList.remove('hidden');
+    }
+
+    /**
+     * Busca produtos por descrição
+     */
+    async buscarProdutos(termo) {
+        if (!termo || termo.length < 2) {
+            const container = document.getElementById('resultadosBusca');
+            if (container) container.classList.add('hidden');
+            return;
+        }
+        
+        this.showLoading(true);
+        const resultados = await api.buscarPorDescricao(termo);
+        this.showLoading(false);
+        
+        this.exibirResultadosBusca(resultados);
+    }
+
+    /**
+     * Exibe resultados da busca
+     */
+    exibirResultadosBusca(resultados) {
+        const container = document.getElementById('resultadosBusca');
+        if (!container) return;
+        
+        if (resultados.length === 0) {
+            container.innerHTML = '<div class="search-result-item">Nenhum produto encontrado</div>';
+        } else {
+            container.innerHTML = resultados.map(produto => `
+                <div class="search-result-item" data-seqprod="${produto.seqProd || ''}">
+                    <strong>${produto.seqProd || 'N/A'}</strong> - ${produto.desc || 'Sem descrição'}
+                    <div style="font-size: 0.9rem; color: #666;">
+                        ${produto.comprador ? 'Comprador: ' + produto.comprador : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.querySelectorAll('.search-result-item[data-seqprod]').forEach(item => {
+                item.addEventListener('click', () => {
+                    this.processarCodigo(item.dataset.seqprod);
+                    container.classList.add('hidden');
+                    document.getElementById('inputBusca').value = '';
+                });
+            });
+        }
+        
+        container.classList.remove('hidden');
+    }
+
+    // =============================================
+    // MÉTODOS DO SCANNER
+    // =============================================
+
+    /**
+     * Ativa/desativa o scanner
+     */
+    async toggleScanner() {
+        const scannerArea = document.getElementById('scannerArea');
+        
+        if (scannerArea.classList.contains('hidden')) {
+            try {
+                const temCamera = await scanner.hasCamera();
+                if (!temCamera) {
+                    this.showToast('Dispositivo não possui câmera!', 'error');
+                    return;
+                }
+                
+                scannerArea.classList.remove('hidden');
+                this.scannerAtivo = true;
+                
+                await scanner.initialize('qr-reader');
+                await scanner.start((codigo) => this.processarCodigo(codigo));
+                
+                this.showToast('Scanner ativado!', 'info');
+            } catch (error) {
+                this.showToast('Erro ao ativar scanner!', 'error');
+                scannerArea.classList.add('hidden');
+                this.scannerAtivo = false;
+            }
+        } else {
+            await this.stopScanner();
+        }
+    }
+
+    /**
+     * Para o scanner
+     */
+    async stopScanner() {
+        try {
+            await scanner.stop();
+            document.getElementById('scannerArea').classList.add('hidden');
+            this.scannerAtivo = false;
+            this.showToast('Scanner desativado', 'info');
+        } catch (error) {
+            console.error('Erro ao parar scanner:', error);
+        }
     }
 
     // =============================================
@@ -867,12 +971,4 @@ class UI {
      */
     capitalizar(texto) {
         if (!texto) return texto;
-        return texto.charAt(0).toUpperCase() + texto.slice(1);
-    }
-}
-
-// Instância global da UI
-const ui = new UI();
-
-// Exporta para uso global
-window.ui = ui;
+        return texto.charAt(0).toUpperCase()
