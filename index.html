@@ -95,30 +95,30 @@
             </div>
             
             <div class="card-body">
-                <!-- Informações Básicas -->
-                <div class="info-group">
+                <!-- Informações Básicas em GRID CENTRALIZADO -->
+                <div class="info-grid">
                     <div class="info-item">
-                        <span class="info-label">Código:</span>
+                        <span class="info-label">Código</span>
                         <span id="produtoCodigo" class="info-value"></span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Descrição:</span>
+                        <span class="info-label">Descrição</span>
                         <span id="produtoDescricao" class="info-value"></span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Comprador:</span>
+                        <span class="info-label">Comprador</span>
                         <span id="produtoComprador" class="info-value"></span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Categoria:</span>
+                        <span class="info-label">Categoria</span>
                         <span id="produtoCategoria" class="info-value"></span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Grupo:</span>
+                        <span class="info-label">Grupo</span>
                         <span id="produtoGrupo" class="info-value"></span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Subgrupo:</span>
+                        <span class="info-label">Subgrupo</span>
                         <span id="produtoSubgrupo" class="info-value"></span>
                     </div>
                 </div>
@@ -126,7 +126,7 @@
                 <!-- Campos Editáveis -->
                 <div class="editables-group">
                     <!-- Nosso Preço -->
-                    <div class="editable-item">
+                    <div class="editable-item" data-campo="nossoPreco">
                         <div class="editable-header">
                             <span class="editable-label">
                                 <i class="fas fa-tag"></i>
@@ -138,7 +138,7 @@
                         </div>
                         <div class="editable-value" id="displayNossoPreco"></div>
                         <div class="editable-input hidden" data-campo="nossoPreco">
-                            <input type="number" id="inputNossoPreco" step="0.01" min="0">
+                            <input type="number" id="inputNossoPreco" step="0.01" min="0" placeholder="Digite o preço...">
                             <button class="btn-save" data-campo="nossoPreco">
                                 <i class="fas fa-check"></i> Salvar
                             </button>
@@ -149,7 +149,7 @@
                     </div>
 
                     <!-- Preço Concorrente -->
-                    <div class="editable-item">
+                    <div class="editable-item" data-campo="precoConcorrente">
                         <div class="editable-header">
                             <span class="editable-label">
                                 <i class="fas fa-chart-line"></i>
@@ -161,7 +161,7 @@
                         </div>
                         <div class="editable-value" id="displayPrecoConcorrente"></div>
                         <div class="editable-input hidden" data-campo="precoConcorrente">
-                            <input type="number" id="inputPrecoConcorrente" step="0.01" min="0">
+                            <input type="number" id="inputPrecoConcorrente" step="0.01" min="0" placeholder="Digite o preço...">
                             <button class="btn-save" data-campo="precoConcorrente">
                                 <i class="fas fa-check"></i> Salvar
                             </button>
@@ -172,7 +172,7 @@
                     </div>
 
                     <!-- Observação -->
-                    <div class="editable-item">
+                    <div class="editable-item" data-campo="observacao">
                         <div class="editable-header">
                             <span class="editable-label">
                                 <i class="fas fa-comment"></i>
@@ -184,7 +184,7 @@
                         </div>
                         <div class="editable-value" id="displayObservacao"></div>
                         <div class="editable-input hidden" data-campo="observacao">
-                            <textarea id="inputObservacao" rows="3"></textarea>
+                            <textarea id="inputObservacao" rows="3" placeholder="Digite sua observação..."></textarea>
                             <button class="btn-save" data-campo="observacao">
                                 <i class="fas fa-check"></i> Salvar
                             </button>
@@ -195,14 +195,21 @@
                     </div>
                 </div>
 
+                <!-- Botão de Enviar Todas Alterações em Lote -->
+                <button id="btnEnviarAlteracoes" class="btn-send-all" style="display: none;" disabled>
+                    <i class="fas fa-upload"></i>
+                    Enviar Alterações
+                    <span class="badge" id="badgeAlteracoes">0</span>
+                </button>
+
                 <!-- Informações Adicionais -->
-                <div class="info-group">
+                <div class="info-grid" style="margin-top: var(--spacing-md);">
                     <div class="info-item">
-                        <span class="info-label">Tipo de Código:</span>
+                        <span class="info-label">Tipo de Código</span>
                         <span id="produtoTipoCodigo" class="info-value"></span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Código de Acesso:</span>
+                        <span class="info-label">Código de Acesso</span>
                         <span id="produtoCodAcesso" class="info-value"></span>
                     </div>
                 </div>
