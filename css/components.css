@@ -17,7 +17,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0; /* Evita que o botão encolha */
+    flex-shrink: 0;
 }
 
 .btn-icon:hover {
@@ -38,7 +38,7 @@
     align-items: center;
     gap: var(--spacing-xs);
     color: var(--text-secondary);
-    white-space: nowrap; /* Evita quebra de texto */
+    white-space: nowrap;
 }
 
 .btn-action:hover {
@@ -69,14 +69,14 @@
     padding: var(--spacing-lg);
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--border-color);
-    position: relative; /* Para posicionamento correto */
+    position: relative;
 }
 
 .manual-input-group {
     display: flex;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-md);
-    align-items: center; /* Alinha verticalmente */
+    align-items: center;
 }
 
 .codigo-input {
@@ -89,7 +89,7 @@
     transition: all var(--transition-normal);
     background: var(--bg-primary);
     font-family: var(--font-family);
-    min-width: 0; /* Permite que o input encolha */
+    min-width: 0;
 }
 
 .codigo-input:focus {
@@ -118,8 +118,8 @@
     align-items: center;
     gap: var(--spacing-sm);
     box-shadow: var(--shadow-primary);
-    white-space: nowrap; /* Evita quebra de texto */
-    flex-shrink: 0; /* Evita que o botão encolha */
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .btn-scan:hover {
@@ -131,7 +131,7 @@
     transform: translateY(0);
 }
 
-/* Área do Scanner - CORRIGIDA */
+/* Área do Scanner */
 .scanner-area {
     margin: var(--spacing-md) 0;
     position: relative;
@@ -139,11 +139,11 @@
     overflow: hidden;
     border: 3px solid var(--primary-color);
     box-shadow: var(--shadow-primary);
-    display: none; /* Começa escondida */
+    display: none;
 }
 
 .scanner-area:not(.hidden) {
-    display: block; /* Mostra quando não tem classe hidden */
+    display: block;
 }
 
 .qr-reader {
@@ -151,7 +151,7 @@
     max-width: 500px;
     margin: 0 auto;
     background: #000;
-    min-height: 300px; /* Altura mínima para o scanner */
+    min-height: 300px;
 }
 
 .btn-stop-scan {
@@ -187,7 +187,7 @@
     transform: translateY(-50%);
     color: var(--text-muted);
     font-size: var(--font-size-lg);
-    pointer-events: none; /* Evita interferência com cliques */
+    pointer-events: none;
 }
 
 .search-input {
@@ -221,11 +221,11 @@
     overflow-y: auto;
     z-index: 1000;
     box-shadow: var(--shadow-lg);
-    display: none; /* Começa escondido */
+    display: none;
 }
 
 .search-results:not(.hidden) {
-    display: block; /* Mostra quando não tem classe hidden */
+    display: block;
 }
 
 .search-result-item {
@@ -244,7 +244,9 @@
     border-bottom: none;
 }
 
-/* Card do Produto */
+/* ==========================================
+   CARD DO PRODUTO - CENTRALIZADO
+   ========================================== */
 .produto-card {
     background: var(--bg-white);
     border-radius: var(--border-radius-xl);
@@ -253,11 +255,11 @@
     overflow: hidden;
     animation: slideUp 0.3s ease-out;
     border: 1px solid var(--border-color);
-    display: none; /* Começa escondido */
+    display: none;
 }
 
 .produto-card:not(.hidden) {
-    display: block; /* Mostra quando não tem classe hidden */
+    display: block;
 }
 
 @keyframes slideUp {
@@ -290,7 +292,11 @@
     padding: var(--spacing-lg);
 }
 
-.info-group {
+/* GRID CENTRALIZADO - Informações em colunas */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
     margin-bottom: var(--spacing-lg);
     background: var(--bg-primary);
     border-radius: var(--border-radius-md);
@@ -299,9 +305,8 @@
 
 .info-item {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: var(--spacing-sm) 0;
+    flex-direction: column;
+    padding: var(--spacing-sm);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -312,19 +317,17 @@
 .info-label {
     font-weight: 600;
     color: var(--text-secondary);
-    min-width: 120px;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin-bottom: 2px;
 }
 
 .info-value {
-    flex: 1;
-    text-align: right;
-    margin-left: var(--spacing-md);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-primary);
-    word-break: break-word; /* Evita overflow */
+    font-size: var(--font-size-md);
+    word-break: break-word;
 }
 
 /* Campos Editáveis */
@@ -341,7 +344,7 @@
     border-radius: var(--border-radius-md);
     padding: var(--spacing-md);
     transition: all var(--transition-normal);
-    position: relative; /* Para posicionamento correto */
+    position: relative;
 }
 
 .editable-item:hover {
@@ -349,12 +352,17 @@
     box-shadow: var(--shadow-md);
 }
 
+.editable-item.pending {
+    border-color: #FF6584;
+    background: #FFF5F7;
+}
+
 .editable-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--spacing-sm);
-    gap: var(--spacing-sm); /* Espaço entre elementos */
+    gap: var(--spacing-sm);
 }
 
 .editable-label {
@@ -363,7 +371,7 @@
     align-items: center;
     gap: var(--spacing-sm);
     color: var(--text-secondary);
-    flex: 1; /* Ocupa espaço disponível */
+    flex: 1;
 }
 
 .editable-label i {
@@ -381,9 +389,10 @@
     display: flex;
     align-items: center;
     color: var(--text-primary);
-    word-break: break-word; /* Evita overflow */
+    word-break: break-word;
 }
 
+/* Botão de edição */
 .btn-edit {
     background: var(--primary-light);
     color: var(--primary-color);
@@ -397,8 +406,8 @@
     display: inline-flex;
     align-items: center;
     gap: var(--spacing-xs);
-    white-space: nowrap; /* Evita quebra de texto */
-    flex-shrink: 0; /* Evita que o botão encolha */
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .btn-edit:hover {
@@ -408,18 +417,18 @@
     box-shadow: var(--shadow-primary);
 }
 
-/* CORRIGIDO: Inputs de edição sem linhas estranhas */
+/* Inputs de edição */
 .editable-input {
     display: flex;
     gap: var(--spacing-sm);
     align-items: flex-start;
     margin-top: var(--spacing-sm);
-    position: relative; /* Para posicionamento correto */
-    z-index: 1; /* Evita sobreposição */
+    position: relative;
+    z-index: 1;
 }
 
 .editable-input.hidden {
-    display: none !important; /* Garante que fica escondido */
+    display: none !important;
 }
 
 .editable-input input,
@@ -432,14 +441,17 @@
     font-family: var(--font-family);
     font-weight: 500;
     transition: all var(--transition-normal);
-    background: var(--bg-white);
-    min-width: 0; /* Permite que o input encolha */
+    background: var(--bg-dark);
+    color: #FFFFFF !important;
+    min-width: 0;
 }
 
 .editable-input input:focus,
 .editable-input textarea:focus {
     outline: none;
     box-shadow: 0 0 0 4px var(--primary-light);
+    background: var(--bg-dark);
+    color: #FFFFFF !important;
 }
 
 .btn-save,
@@ -454,8 +466,8 @@
     display: inline-flex;
     align-items: center;
     gap: var(--spacing-xs);
-    white-space: nowrap; /* Evita quebra de texto */
-    flex-shrink: 0; /* Evita que o botão encolha */
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .btn-save {
@@ -480,6 +492,46 @@
     box-shadow: var(--shadow-md);
 }
 
+/* Botão de enviar todas alterações */
+.btn-send-all {
+    background: linear-gradient(135deg, #6C63FF 0%, #FF6584 100%);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    cursor: pointer;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    transition: all var(--transition-normal);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    box-shadow: var(--shadow-primary);
+    width: 100%;
+    justify-content: center;
+    margin-top: var(--spacing-md);
+}
+
+.btn-send-all:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.btn-send-all:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-send-all .badge {
+    background: #FF1744;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
 /* Histórico */
 .historico-section {
     background: var(--bg-white);
@@ -496,7 +548,7 @@
     margin-bottom: var(--spacing-lg);
     padding-bottom: var(--spacing-md);
     border-bottom: 2px solid var(--border-color);
-    flex-wrap: wrap; /* Permite quebra em telas pequenas */
+    flex-wrap: wrap;
     gap: var(--spacing-sm);
 }
 
@@ -516,7 +568,7 @@
 .historico-actions {
     display: flex;
     gap: var(--spacing-sm);
-    flex-wrap: wrap; /* Permite quebra em telas pequenas */
+    flex-wrap: wrap;
 }
 
 .historico-lista {
@@ -536,6 +588,7 @@
     transition: all var(--transition-normal);
     border: 2px solid transparent;
     gap: var(--spacing-sm);
+    flex-wrap: wrap;
 }
 
 .historico-item:hover {
@@ -558,14 +611,53 @@
 .historico-item .produto-descricao {
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
-    word-break: break-word; /* Evita overflow */
+    word-break: break-word;
 }
 
 .historico-item .produto-hora {
     font-size: var(--font-size-xs);
     color: var(--text-muted);
     text-align: right;
-    white-space: nowrap; /* Evita quebra */
+    white-space: nowrap;
+}
+
+/* Alterações no histórico */
+.alteracoes-lista {
+    margin-top: 8px;
+    padding: 8px;
+    background: #FFF5F7;
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid #FF6584;
+}
+
+.alteracao-item {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.alteracao-item .campo-nome {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.alteracao-item .valor-antigo {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.alteracao-item .valor-novo {
+    font-weight: 600;
+    color: #00C853;
+}
+
+.alteracao-item .seta {
+    color: var(--text-muted);
+    margin: 0 4px;
 }
 
 /* Animações */
@@ -582,5 +674,31 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Responsivo */
+@media (max-width: 767px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .editable-input {
+        flex-direction: column;
+    }
+    
+    .btn-save,
+    .btn-cancel {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .historico-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .historico-item .produto-hora {
+        text-align: left;
     }
 }
