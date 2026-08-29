@@ -177,4 +177,255 @@ Object.assign(UI.prototype, {
     /**
      * Salva edição LOCALMENTE (não envia para API)
      */
-    sal
+    salvarEdicaoLocal(campo) {
+        const inputElement = document.getElementById(`input${this.capitalizar(campo)}`);
+        const novoValor = inputElement.value.trim();
+        const seqProd = this.produtoAtual.seqProd;
+        
+        // Adiciona ou atualiza alteração pendente
+        if (!this.produtosAlterados[seqProd]) {
+            this.produtosAlterados[seqProd] = [];
+        }
+        
+        const pendentes = this.produtosAlterados[seqProd];
+        const existente = pendentes.find(p => p.campo === campo);
+        
+        if (existente) {
+            existente.valor = novoValor;
+        } else {
+            pendentes.push({
+                campo: campo,
+                valor: novoValor,
+                valorAntigo: this.produtoAtual[campo] || ''
+            });
+        }
+        
+        // Remove se estiver vazio
+        if (novoValor === '') {
+            const index = pendentes.findIndex(p => p.campo === campo);
+            if (index > -1) {
+                pendentes.splice(index, 1);
+            }
+        }
+        
+        this.salvarAlteracoesPendentes();
+        this.finalizarEdicao(campo);
+        this.atualizarDisplayEditaveis(this.produtoAtual);
+        this.atualizarBotaoEnviar();
+        
+        this.showToast('Alteração salva localmente! Envie para salvar na planilha.', 'info');
+    },
+
+    /**
+     * Atualiza o botão de enviar alterações
+     */
+    atualizarBotaoEnviar() {
+        const total = Object.values(this.produtosAlterados).reduce((acc, arr) => acc + arr.length, 0);
+        const btn = document.getElementById('btnEnviarAlteracoes');
+        const badge = document.getElementById('badgeAlteracoes');
+        
+        if (btn) {
+            if (total > 0) {
+                btn.disabled = false;
+                btn.style.display = 'flex';
+            } else {
+                btn.disabled = true;
+                btn.style.display = 'none';
+            }
+        }
+        
+        if (badge) {
+            badge.textContent = total;
+            badge.style.display = total > 0 ? 'inline' : 'none';
+        }
+    },
+
+    /**
+     * Envia TODAS as alterações pendentes para a API
+     */
+    async enviarTodasAlteracoes() {
+        const total = Object.values(this.produtosAlterados).reduce((acc, arr) => acc + arr.length, 0);
+        
+        if (total === 0) {
+            this.showToast('Nenhuma alteração pendente!', 'warning');
+            return;
+        }
+        
+        if (!confirm(`Deseja enviar ${total} alteração(ões) para a planilha?`)) {
+            return;
+        }
+        
+        const btn = document.getElementById('btnEnviarAlteracoes');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+        
+        let sucessos = 0;
+        let erros = 0;
+        
+        const sequencias = Object.keys(this.produtosAlterados);
+        
+        for (const seqProd of sequencias) {
+            const alteracoes = this.produtosAlterados[seqProd];
+            
+            for (const alteracao of alteracoes) {
+                try {
+                    await api.atualizarCampo(seqProd, alteracao.campo, alteracao.valor);
+                    sucessos++;
+                } catch (error) {
+                    console.error('Erro ao enviar alteração:', error);
+                    erros++;
+                }
+            }
+        }
+        
+        // Limpa alterações pendentes
+        this.produtosAlterados = {};
+        this.salvarAlteracoesPendentes();
+        
+        // Atualiza UI
+        if (this.produtoAtual) {
+            await api.carregarArvore(true);
+            const produtoAtualizado = await api.buscarPorSeq(this.produtoAtual.seqProd);
+            if (produtoAtualizado) {
+                this.exibirProduto(produtoAtualizado);
+            }
+        }
+        
+        this.atualizarBotaoEnviar();
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload"></i> Enviar Alterações <span class="badge" id="badgeAlteracoes">0</span>';
+        
+        if (erros === 0) {
+            this.showToast(`✅ ${sucessos} alteração(ões) enviadas com sucesso!`, 'success');
+        } else {
+            this.showToast(`⚠️ ${sucessos} enviadas, ${erros} falhas.`, 'warning');
+        }
+    },
+
+    /**
+     * Cancela edição de um campo
+     */
+    cancelarEdicao(campo) {
+        this.finalizarEdicao(campo);
+        this.showToast('Edição cancelada', 'info');
+    },
+
+    /**
+     * Finaliza edição de um campo
+     */
+    finalizarEdicao(campo) {
+        this.isEditando = false;
+        
+        const displayElement = document.getElementById(`display${this.capitalizar(campo)}`);
+        if (displayElement) displayElement.classList.remove('hidden');
+        
+        const inputElement = document.getElementById(`input${this.capitalizar(campo)}`);
+        if (inputElement) {
+            const container = inputElement.closest('.editable-input');
+            if (container) container.classList.add('hidden');
+        }
+    },
+
+    /**
+     * Fecha o card do produto
+     */
+    fecharCard() {
+        document.getElementById('produtoCard').classList.add('hidden');
+        this.produtoAtual = null;
+        this.isEditando = false;
+    },
+
+    /**
+     * Busca produtos por descrição
+     */
+    async buscarProdutos(termo) {
+        if (!termo || termo.length < 2) {
+            const container = document.getElementById('resultadosBusca');
+            if (container) container.classList.add('hidden');
+            return;
+        }
+        
+        this.showLoading(true);
+        const resultados = await api.buscarPorDescricao(termo);
+        this.showLoading(false);
+        
+        this.exibirResultadosBusca(resultados);
+    },
+
+    /**
+     * Exibe resultados da busca
+     */
+    exibirResultadosBusca(resultados) {
+        const container = document.getElementById('resultadosBusca');
+        if (!container) return;
+        
+        if (resultados.length === 0) {
+            container.innerHTML = '<div class="search-result-item">Nenhum produto encontrado</div>';
+        } else {
+            container.innerHTML = resultados.map(produto => `
+                <div class="search-result-item" data-seqprod="${produto.seqProd || ''}">
+                    <strong>${produto.seqProd || 'N/A'}</strong> - ${produto.desc || 'Sem descrição'}
+                    <div style="font-size: 0.9rem; color: #666;">
+                        ${produto.comprador ? 'Comprador: ' + produto.comprador : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.querySelectorAll('.search-result-item[data-seqprod]').forEach(item => {
+                item.addEventListener('click', () => {
+                    this.processarCodigo(item.dataset.seqprod);
+                    container.classList.add('hidden');
+                    document.getElementById('inputBusca').value = '';
+                });
+            });
+        }
+        
+        container.classList.remove('hidden');
+    },
+
+    /**
+     * Ativa/desativa o scanner
+     */
+    async toggleScanner() {
+        const scannerArea = document.getElementById('scannerArea');
+        
+        if (scannerArea.classList.contains('hidden')) {
+            try {
+                const temCamera = await scanner.hasCamera();
+                if (!temCamera) {
+                    this.showToast('Dispositivo não possui câmera!', 'error');
+                    return;
+                }
+                
+                scannerArea.classList.remove('hidden');
+                this.scannerAtivo = true;
+                
+                await scanner.initialize('qr-reader');
+                await scanner.start((codigo) => this.processarCodigo(codigo));
+                
+                this.showToast('Scanner ativado!', 'info');
+            } catch (error) {
+                this.showToast('Erro ao ativar scanner!', 'error');
+                scannerArea.classList.add('hidden');
+                this.scannerAtivo = false;
+            }
+        } else {
+            await this.stopScanner();
+        }
+    },
+
+    /**
+     * Para o scanner
+     */
+    async stopScanner() {
+        try {
+            await scanner.stop();
+            document.getElementById('scannerArea').classList.add('hidden');
+            this.scannerAtivo = false;
+            this.showToast('Scanner desativado', 'info');
+        } catch (error) {
+            console.error('Erro ao parar scanner:', error);
+        }
+    }
+});
