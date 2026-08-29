@@ -971,4 +971,10 @@ class UI {
      */
     capitalizar(texto) {
         if (!texto) return texto;
-        return texto.charAt(0).toUpperCase()
+        return texto.charAt(0).toUpperCase() + texto.slice(1);
+    }
+}
+
+// Instância global da UI
+const ui = new UI();
+window.ui = ui;
