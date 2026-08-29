@@ -251,3 +251,86 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary-dark);
 }
+
+/* ==========================================
+   CORREÇÃO DOS INPUTS DE PREÇO - TEXTO BRANCO
+   ========================================== */
+.editable-input input,
+.editable-input textarea {
+    flex: 1;
+    padding: var(--spacing-md);
+    border: 2px solid var(--primary-color);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-md);
+    font-family: var(--font-family);
+    font-weight: 500;
+    transition: all var(--transition-normal);
+    background: var(--bg-dark);
+    color: #FFFFFF !important; /* Força texto branco */
+    min-width: 0;
+}
+
+.editable-input input:focus,
+.editable-input textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--primary-light);
+    background: var(--bg-dark);
+    color: #FFFFFF !important;
+}
+
+.editable-input input::placeholder,
+.editable-input textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Botão de enviar alterações em lote */
+.btn-send-all {
+    background: linear-gradient(135deg, #6C63FF 0%, #FF6584 100%);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    cursor: pointer;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    transition: all var(--transition-normal);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    box-shadow: var(--shadow-primary);
+    width: 100%;
+    justify-content: center;
+    margin-top: var(--spacing-md);
+}
+
+.btn-send-all:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.btn-send-all:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Indicador de alterações pendentes */
+.pending-badge {
+    background: #FF6584;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: var(--spacing-sm);
+}
+
+/* Estilo para campos com alteração pendente */
+.editable-item.pending {
+    border-color: #FF6584;
+    background: #FFF5F7;
+}
+
+.editable-item.pending .editable-header {
+    border-bottom: 2px dashed #FF6584;
+}
