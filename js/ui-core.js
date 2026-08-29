@@ -12,6 +12,10 @@ class UI {
         this.scannerAtivo = false;
         this.buscaTimeout = null;
         this.isLoading = false;
+        
+        // Armazena alterações pendentes
+        this.alteracoesPendentes = [];
+        this.produtosAlterados = {};
     }
 
     /**
@@ -19,6 +23,7 @@ class UI {
      */
     initialize() {
         this.carregarHistorico();
+        this.carregarAlteracoesPendentes();
         this.bindEvents();
         console.log('UI inicializada');
     }
@@ -86,15 +91,25 @@ class UI {
             btn.addEventListener('click', () => this.iniciarEdicao(btn.dataset.campo));
         });
 
-        // Botões de salvar
+        // Botões de salvar (agora salvam localmente)
         document.querySelectorAll('.btn-save').forEach(btn => {
-            btn.addEventListener('click', () => this.salvarEdicao(btn.dataset.campo));
+            btn.addEventListener('click', () => {
+                const campo = btn.dataset.campo;
+                // Salva localmente primeiro
+                this.salvarEdicaoLocal(campo);
+            });
         });
 
         // Botões de cancelar
         document.querySelectorAll('.btn-cancel').forEach(btn => {
             btn.addEventListener('click', () => this.cancelarEdicao(btn.dataset.campo));
         });
+
+        // Botão de enviar todas alterações
+        const btnEnviar = document.getElementById('btnEnviarAlteracoes');
+        if (btnEnviar) {
+            btnEnviar.addEventListener('click', () => this.enviarTodasAlteracoes());
+        }
 
         // Histórico
         const btnLimparHistorico = document.getElementById('btnLimparHistorico');
@@ -121,6 +136,60 @@ class UI {
         }
 
         console.log('Eventos vinculados');
+    }
+
+    /**
+     * Carrega alterações pendentes do localStorage
+     */
+    carregarAlteracoesPendentes() {
+        try {
+            const saved = localStorage.getItem('alteracoes_pendentes');
+            if (saved) {
+                this.produtosAlterados = JSON.parse(saved);
+                console.log('📝 Alterações pendentes carregadas:', 
+                    Object.values(this.produtosAlterados).reduce((acc, arr) => acc + arr.length, 0));
+            } else {
+                this.produtosAlterados = {};
+            }
+        } catch (error) {
+            console.error('Erro ao carregar alterações:', error);
+            this.produtosAlterados = {};
+        }
+    }
+
+    /**
+     * Salva alterações pendentes no localStorage
+     */
+    salvarAlteracoesPendentes() {
+        try {
+            localStorage.setItem('alteracoes_pendentes', JSON.stringify(this.produtosAlterados));
+        } catch (error) {
+            console.error('Erro ao salvar alterações:', error);
+        }
+    }
+
+    /**
+     * Atualiza o botão de enviar alterações
+     */
+    atualizarBotaoEnviar() {
+        const total = Object.values(this.produtosAlterados).reduce((acc, arr) => acc + arr.length, 0);
+        const btn = document.getElementById('btnEnviarAlteracoes');
+        const badge = document.getElementById('badgeAlteracoes');
+        
+        if (btn) {
+            if (total > 0) {
+                btn.disabled = false;
+                btn.style.display = 'flex';
+            } else {
+                btn.disabled = true;
+                btn.style.display = 'none';
+            }
+        }
+        
+        if (badge) {
+            badge.textContent = total;
+            badge.style.display = total > 0 ? 'inline' : 'none';
+        }
     }
 
     /**
@@ -159,7 +228,7 @@ class UI {
             setTimeout(() => {
                 if (toast.parentNode) container.removeChild(toast);
             }, 300);
-        }, CONFIG.TOAST_DURATION);
+        }, CONFIG.TOAST_DURATION || 3000);
     }
 
     /**
