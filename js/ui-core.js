@@ -1,6 +1,6 @@
 /**
  * UI-CORE.JS
- * Núcleo da interface do usuário - COMPLETO
+ * Núcleo da interface do usuário - COMPLETO COM SCROLL
  */
 
 class UI {
@@ -40,6 +40,11 @@ class UI {
         // Renderiza histórico
         this.renderizarHistorico();
         
+        // Configura callback do scanner
+        scanner.onStop(() => {
+            this.fecharScanner();
+        });
+        
         console.log('✅ UI inicializada');
     }
 
@@ -72,7 +77,7 @@ class UI {
         // Botão de parar scanner
         const btnStopScan = document.getElementById('btnStopScan');
         if (btnStopScan) {
-            btnStopScan.addEventListener('click', () => this.stopScanner());
+            btnStopScan.addEventListener('click', () => this.fecharScanner());
         }
 
         // Busca com debounce
@@ -159,6 +164,180 @@ class UI {
     }
 
     // =============================================
+    // MÉTODOS DO SCANNER
+    // =============================================
+
+    /**
+     * Ativa/desativa o scanner
+     */
+    async toggleScanner() {
+        const scannerArea = document.getElementById('scannerArea');
+        
+        if (scannerArea.classList.contains('hidden')) {
+            try {
+                const temCamera = await scanner.hasCamera();
+                if (!temCamera) {
+                    this.showToast('Dispositivo não possui câmera!', 'error');
+                    return;
+                }
+                
+                scannerArea.classList.remove('hidden');
+                this.scannerAtivo = true;
+                
+                await scanner.initialize('qr-reader');
+                await scanner.start((codigo) => {
+                    // Processa o código encontrado
+                    this.processarCodigo(codigo);
+                    // O scanner é parado automaticamente pelo scanner.stop() dentro do callback
+                });
+                
+                this.showToast('📷 Scanner ativado! Aponte para o código.', 'info');
+            } catch (error) {
+                console.error('Erro ao ativar scanner:', error);
+                this.showToast('❌ Erro ao ativar scanner!', 'error');
+                this.fecharScanner();
+            }
+        } else {
+            this.fecharScanner();
+        }
+    }
+
+    /**
+     * Fecha o scanner
+     */
+    fecharScanner() {
+        const scannerArea = document.getElementById('scannerArea');
+        scannerArea.classList.add('hidden');
+        this.scannerAtivo = false;
+        
+        // Limpa o elemento do scanner
+        const readerElement = document.getElementById('qr-reader');
+        if (readerElement) {
+            readerElement.innerHTML = '';
+        }
+        
+        console.log('📷 Scanner fechado');
+    }
+
+    /**
+     * Para o scanner (chamado pelo botão)
+     */
+    async stopScanner() {
+        try {
+            await scanner.stop();
+            this.fecharScanner();
+            this.showToast('Scanner desativado', 'info');
+        } catch (error) {
+            console.error('Erro ao parar scanner:', error);
+        }
+    }
+
+    // =============================================
+    // MÉTODOS DE PRODUTO
+    // =============================================
+
+    /**
+     * Processa um código de barras (EAN ou SEQ)
+     */
+    async processarCodigo(codigo) {
+        try {
+            this.showLoading(true);
+            
+            const codigoLimpo = codigo.trim();
+            console.log('🔍 Processando código:', codigoLimpo);
+            
+            let produto = await api.buscarPorEAN(codigoLimpo);
+            
+            if (!produto) {
+                console.log('Não encontrado por EAN, tentando por SEQ...');
+                produto = await api.buscarPorSeq(codigoLimpo);
+            }
+            
+            this.showLoading(false);
+            
+            if (produto) {
+                console.log('✅ Produto encontrado:', produto);
+                this.exibirProduto(produto);
+                this.adicionarHistorico(produto);
+                this.showToast('✅ Produto encontrado!', 'success');
+                
+                // Limpa o input
+                const inputCodigo = document.getElementById('inputCodigo');
+                if (inputCodigo) inputCodigo.value = '';
+                
+                // ROLA A PÁGINA PARA O CARD DO PRODUTO
+                this.scrollParaProduto();
+            } else {
+                console.log('❌ Produto não encontrado');
+                this.showToast('❌ Produto não encontrado!', 'warning');
+                // Fecha o card se estava aberto
+                this.fecharCard();
+            }
+        } catch (error) {
+            this.showLoading(false);
+            console.error('❌ Erro ao processar código:', error);
+            this.showToast('❌ Erro ao processar código!', 'error');
+        }
+    }
+
+    /**
+     * Exibe um produto no card e rola para ele
+     */
+    exibirProduto(produto) {
+        this.produtoAtual = produto;
+        
+        document.getElementById('produtoCodigo').textContent = produto.seqProd || 'N/A';
+        document.getElementById('produtoDescricao').textContent = produto.desc || 'N/A';
+        document.getElementById('produtoComprador').textContent = produto.comprador || 'N/A';
+        document.getElementById('produtoCategoria').textContent = produto.categoria || 'N/A';
+        document.getElementById('produtoGrupo').textContent = produto.grupo || 'N/A';
+        document.getElementById('produtoSubgrupo').textContent = produto.subgrupo || 'N/A';
+        document.getElementById('produtoTipoCodigo').textContent = produto.tipoCodigo || 'N/A';
+        document.getElementById('produtoCodAcesso').textContent = produto.codAcesso || 'N/A';
+        
+        this.atualizarDisplayEditaveis(produto);
+        this.atualizarBotaoEnviar();
+        
+        const card = document.getElementById('produtoCard');
+        card.classList.remove('hidden');
+        
+        // Rola para o card do produto
+        this.scrollParaProduto();
+    }
+
+    /**
+     * Rola a página suavemente para o card do produto
+     */
+    scrollParaProduto() {
+        const card = document.getElementById('produtoCard');
+        if (!card) return;
+        
+        // Pequeno delay para garantir que o card foi renderizado
+        setTimeout(() => {
+            const rect = card.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const targetPosition = rect.top + scrollTop - 80; // 80px de margem do topo
+            
+            window.scrollTo({
+                top: targetPosition,
+                behavior: 'smooth'
+            });
+            
+            console.log('📜 Rolando para o produto');
+        }, 300);
+    }
+
+    /**
+     * Fecha o card do produto
+     */
+    fecharCard() {
+        const card = document.getElementById('produtoCard');
+        if (card) card.classList.add('hidden');
+        this.produtoAtual = null;
+        this.isEditando = false;
+    }
+
+    // =============================================
     // MÉTODOS DO HISTÓRICO
     // =============================================
 
@@ -214,7 +393,6 @@ class UI {
             }
         };
         
-        // Verifica se o produto já está no histórico
         const existenteIndex = this.historico.findIndex(h => h.seqProd === itemHistorico.seqProd);
         if (existenteIndex > -1) {
             this.historico[existenteIndex] = {
@@ -740,80 +918,6 @@ class UI {
     }
 
     /**
-     * Fecha o card do produto
-     */
-    fecharCard() {
-        const card = document.getElementById('produtoCard');
-        if (card) card.classList.add('hidden');
-        this.produtoAtual = null;
-        this.isEditando = false;
-    }
-
-    // =============================================
-    // MÉTODOS DE BUSCA E PRODUTO
-    // =============================================
-
-    /**
-     * Processa um código de barras (EAN ou SEQ)
-     */
-    async processarCodigo(codigo) {
-        try {
-            this.showLoading(true);
-            
-            const codigoLimpo = codigo.trim();
-            console.log('Processando código:', codigoLimpo);
-            
-            let produto = await api.buscarPorEAN(codigoLimpo);
-            
-            if (!produto) {
-                console.log('Não encontrado por EAN, tentando por SEQ...');
-                produto = await api.buscarPorSeq(codigoLimpo);
-            }
-            
-            this.showLoading(false);
-            
-            if (produto) {
-                console.log('Produto encontrado:', produto);
-                this.exibirProduto(produto);
-                this.adicionarHistorico(produto);
-                this.showToast('Produto encontrado!', 'success');
-                
-                const inputCodigo = document.getElementById('inputCodigo');
-                if (inputCodigo) inputCodigo.value = '';
-            } else {
-                console.log('Produto não encontrado');
-                this.showToast('Produto não encontrado!', 'warning');
-            }
-        } catch (error) {
-            this.showLoading(false);
-            console.error('Erro ao processar código:', error);
-            this.showToast('Erro ao processar código!', 'error');
-        }
-    }
-
-    /**
-     * Exibe um produto no card
-     */
-    exibirProduto(produto) {
-        this.produtoAtual = produto;
-        
-        document.getElementById('produtoCodigo').textContent = produto.seqProd || 'N/A';
-        document.getElementById('produtoDescricao').textContent = produto.desc || 'N/A';
-        document.getElementById('produtoComprador').textContent = produto.comprador || 'N/A';
-        document.getElementById('produtoCategoria').textContent = produto.categoria || 'N/A';
-        document.getElementById('produtoGrupo').textContent = produto.grupo || 'N/A';
-        document.getElementById('produtoSubgrupo').textContent = produto.subgrupo || 'N/A';
-        document.getElementById('produtoTipoCodigo').textContent = produto.tipoCodigo || 'N/A';
-        document.getElementById('produtoCodAcesso').textContent = produto.codAcesso || 'N/A';
-        
-        this.atualizarDisplayEditaveis(produto);
-        this.atualizarBotaoEnviar();
-        
-        const card = document.getElementById('produtoCard');
-        card.classList.remove('hidden');
-    }
-
-    /**
      * Busca produtos por descrição
      */
     async buscarProdutos(termo) {
@@ -859,55 +963,6 @@ class UI {
         }
         
         container.classList.remove('hidden');
-    }
-
-    // =============================================
-    // MÉTODOS DO SCANNER
-    // =============================================
-
-    /**
-     * Ativa/desativa o scanner
-     */
-    async toggleScanner() {
-        const scannerArea = document.getElementById('scannerArea');
-        
-        if (scannerArea.classList.contains('hidden')) {
-            try {
-                const temCamera = await scanner.hasCamera();
-                if (!temCamera) {
-                    this.showToast('Dispositivo não possui câmera!', 'error');
-                    return;
-                }
-                
-                scannerArea.classList.remove('hidden');
-                this.scannerAtivo = true;
-                
-                await scanner.initialize('qr-reader');
-                await scanner.start((codigo) => this.processarCodigo(codigo));
-                
-                this.showToast('Scanner ativado!', 'info');
-            } catch (error) {
-                this.showToast('Erro ao ativar scanner!', 'error');
-                scannerArea.classList.add('hidden');
-                this.scannerAtivo = false;
-            }
-        } else {
-            await this.stopScanner();
-        }
-    }
-
-    /**
-     * Para o scanner
-     */
-    async stopScanner() {
-        try {
-            await scanner.stop();
-            document.getElementById('scannerArea').classList.add('hidden');
-            this.scannerAtivo = false;
-            this.showToast('Scanner desativado', 'info');
-        } catch (error) {
-            console.error('Erro ao parar scanner:', error);
-        }
     }
 
     // =============================================
