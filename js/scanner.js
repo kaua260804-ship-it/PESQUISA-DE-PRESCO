@@ -8,7 +8,7 @@ class Scanner {
         this.html5QrCode = null;
         this.isScanning = false;
         this.onScanCallback = null;
-        this.scannerElementId = 'qr-reader';
+        this.onStopCallback = null;
     }
 
     /**
@@ -17,14 +17,17 @@ class Scanner {
      */
     async initialize(elementId) {
         try {
-            // Verifica se Html5Qrcode está disponível
             if (typeof Html5Qrcode === 'undefined') {
                 throw new Error('Biblioteca Html5Qrcode não carregada');
             }
+            
+            // Se já existir uma instância, destrói para evitar conflitos
+            if (this.html5QrCode) {
+                this.html5QrCode = null;
+            }
 
-            this.scannerElementId = elementId || 'qr-reader';
-            this.html5QrCode = new Html5Qrcode(this.scannerElementId);
-            console.log('✅ Scanner inicializado');
+            this.html5QrCode = new Html5Qrcode(elementId);
+            console.log('📷 Scanner inicializado');
         } catch (error) {
             console.error('❌ Erro ao inicializar scanner:', error);
             throw error;
@@ -48,36 +51,29 @@ class Scanner {
             this.onScanCallback = onScanCallback;
             this.isScanning = true;
 
-            const config = CONFIG.SCANNER_CONFIG;
-            
-            // Limpa o elemento antes de iniciar
-            const element = document.getElementById(this.scannerElementId);
-            if (element) {
-                element.innerHTML = '';
-            }
-            
             await this.html5QrCode.start(
                 { facingMode: "environment" },
-                config,
+                { fps: 10, qrbox: { width: 250, height: 250 } },
                 (decodedText) => {
                     // Código detectado
                     console.log('📷 Código detectado:', decodedText);
-                    this.playBeep();
                     
+                    // Vibração no celular (se suportado)
+                    if (navigator.vibrate) navigator.vibrate(200);
+                    
+                    // Para o scanner imediatamente
+                    this.stop();
+                    
+                    // Executa o callback da UI
                     if (this.onScanCallback) {
                         this.onScanCallback(decodedText);
                     }
-                    
-                    // PARA O SCANNER AUTOMATICAMENTE após a leitura
-                    this.stop();
                 },
                 (errorMessage) => {
-                    // Erro de leitura (ignorado silenciosamente)
-                    console.debug('Erro de leitura:', errorMessage);
+                    // Ignora erros de leitura contínua (normal acontecer)
                 }
             );
 
-            console.log('📷 Scanner iniciado');
         } catch (error) {
             console.error('❌ Erro ao iniciar scanner:', error);
             this.isScanning = false;
@@ -95,13 +91,11 @@ class Scanner {
                 this.isScanning = false;
                 console.log('📷 Scanner parado');
                 
-                // Limpa o elemento do scanner
-                const element = document.getElementById(this.scannerElementId);
-                if (element) {
-                    element.innerHTML = '';
-                }
+                // Limpa o elemento HTML
+                const element = document.getElementById('qr-reader');
+                if (element) element.innerHTML = '';
                 
-                // Fecha a área do scanner (chama o callback de fechamento)
+                // Notifica a UI para fechar a caixa do scanner
                 if (typeof this.onStopCallback === 'function') {
                     this.onStopCallback();
                 }
@@ -120,42 +114,13 @@ class Scanner {
     }
 
     /**
-     * Toca um beep de feedback
-     */
-    playBeep() {
-        try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = CONFIG.BEEP_CONFIG.frequency || 800;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(CONFIG.BEEP_CONFIG.volume || 0.5, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + (CONFIG.BEEP_CONFIG.duration || 0.2));
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + (CONFIG.BEEP_CONFIG.duration || 0.2));
-            
-            console.log('🔊 Beep tocado');
-        } catch (error) {
-            console.error('❌ Erro ao tocar beep:', error);
-        }
-    }
-
-    /**
      * Verifica se o dispositivo tem câmera
-     * @returns {Promise<boolean>} True se tem câmera
      */
     async hasCamera() {
         try {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 return false;
             }
-            
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             stream.getTracks().forEach(track => track.stop());
             return true;
