@@ -8,20 +8,19 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Pesquisa de Preço - Área Restrita</title>
     
-    <!-- Font Awesome para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- CSS do projeto -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/login.css">
+
+    <!-- Bibliotecas do Google para Sheets API -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
-    <!-- Cabeçalho (escondido até login) -->
     <header class="app-header" id="appHeader" style="display: none;">
         <div class="header-container">
             <h1 class="app-title">
@@ -39,53 +38,31 @@
         </div>
     </header>
 
-    <!-- Conteúdo Principal (escondido até login) -->
     <main class="app-main" id="appMain" style="display: none;">
-        <!-- Seção de Scanner -->
         <section class="scanner-section">
             <div class="scanner-container">
-                <!-- Input manual -->
                 <div class="manual-input-group">
-                    <input 
-                        type="text" 
-                        id="inputCodigo" 
-                        class="codigo-input" 
-                        placeholder="Digite ou escaneie o código..."
-                        autocomplete="off"
-                        inputmode="numeric"
-                        aria-label="Código de barras"
-                    >
+                    <input type="text" id="inputCodigo" class="codigo-input" placeholder="Digite ou escaneie o código..." autocomplete="off" inputmode="numeric">
                     <button id="btnScan" class="btn-scan" title="Escanear código">
-                        <i class="fas fa-camera"></i>
-                        Escanear
+                        <i class="fas fa-camera"></i> Escanear
                     </button>
                 </div>
 
-                <!-- Área do scanner -->
                 <div id="scannerArea" class="scanner-area hidden">
                     <div id="qr-reader" class="qr-reader"></div>
                     <button id="btnStopScan" class="btn-stop-scan">
-                        <i class="fas fa-times"></i>
-                        Fechar Scanner
+                        <i class="fas fa-times"></i> Fechar Scanner
                     </button>
                 </div>
 
-                <!-- Área de busca -->
                 <div class="search-group">
                     <i class="fas fa-search search-icon"></i>
-                    <input 
-                        type="text" 
-                        id="inputBusca" 
-                        class="search-input" 
-                        placeholder="Buscar por código, descrição..."
-                        autocomplete="off"
-                    >
+                    <input type="text" id="inputBusca" class="search-input" placeholder="Buscar por código, descrição..." autocomplete="off">
                 </div>
                 <div id="resultadosBusca" class="search-results hidden"></div>
             </div>
         </section>
 
-        <!-- Card do Produto -->
         <section id="produtoCard" class="produto-card hidden">
             <div class="card-header">
                 <h2 class="produto-titulo">Produto Encontrado</h2>
@@ -95,193 +72,90 @@
             </div>
             
             <div class="card-body">
-                <!-- Informações Básicas em GRID CENTRALIZADO -->
                 <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Código</span>
-                        <span id="produtoCodigo" class="info-value"></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Descrição</span>
-                        <span id="produtoDescricao" class="info-value"></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Comprador</span>
-                        <span id="produtoComprador" class="info-value"></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Categoria</span>
-                        <span id="produtoCategoria" class="info-value"></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Grupo</span>
-                        <span id="produtoGrupo" class="info-value"></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Subgrupo</span>
-                        <span id="produtoSubgrupo" class="info-value"></span>
-                    </div>
+                    <div class="info-item"><span class="info-label">Código</span><span id="produtoCodigo" class="info-value"></span></div>
+                    <div class="info-item"><span class="info-label">Descrição</span><span id="produtoDescricao" class="info-value"></span></div>
+                    <div class="info-item"><span class="info-label">Comprador</span><span id="produtoComprador" class="info-value"></span></div>
+                    <div class="info-item"><span class="info-label">Categoria</span><span id="produtoCategoria" class="info-value"></span></div>
+                    <div class="info-item"><span class="info-label">Grupo</span><span id="produtoGrupo" class="info-value"></span></div>
+                    <div class="info-item"><span class="info-label">Subgrupo</span><span id="produtoSubgrupo" class="info-value"></span></div>
                 </div>
 
-                <!-- Campos Editáveis -->
                 <div class="editables-group">
-                    <!-- Nosso Preço -->
                     <div class="editable-item" data-campo="nossoPreco">
                         <div class="editable-header">
-                            <span class="editable-label">
-                                <i class="fas fa-tag"></i>
-                                Nosso Preço:
-                            </span>
-                            <button class="btn-edit" data-campo="nossoPreco">
-                                <i class="fas fa-edit"></i> Editar
-                            </button>
+                            <span class="editable-label"><i class="fas fa-tag"></i> Nosso Preço:</span>
+                            <button class="btn-edit" data-campo="nossoPreco"><i class="fas fa-edit"></i> Editar</button>
                         </div>
                         <div class="editable-value" id="displayNossoPreco"></div>
                         <div class="editable-input hidden" data-campo="nossoPreco">
                             <input type="number" id="inputNossoPreco" step="0.01" min="0" placeholder="Digite o preço...">
-                            <button class="btn-save" data-campo="nossoPreco">
-                                <i class="fas fa-check"></i> Salvar
-                            </button>
-                            <button class="btn-cancel" data-campo="nossoPreco">
-                                <i class="fas fa-times"></i> Cancelar
-                            </button>
+                            <button class="btn-save" data-campo="nossoPreco"><i class="fas fa-check"></i> Salvar</button>
+                            <button class="btn-cancel" data-campo="nossoPreco"><i class="fas fa-times"></i> Cancelar</button>
                         </div>
                     </div>
 
-                    <!-- Preço Concorrente -->
                     <div class="editable-item" data-campo="precoConcorrente">
                         <div class="editable-header">
-                            <span class="editable-label">
-                                <i class="fas fa-chart-line"></i>
-                                Preço Concorrente:
-                            </span>
-                            <button class="btn-edit" data-campo="precoConcorrente">
-                                <i class="fas fa-edit"></i> Editar
-                            </button>
+                            <span class="editable-label"><i class="fas fa-chart-line"></i> Preço Concorrente:</span>
+                            <button class="btn-edit" data-campo="precoConcorrente"><i class="fas fa-edit"></i> Editar</button>
                         </div>
                         <div class="editable-value" id="displayPrecoConcorrente"></div>
                         <div class="editable-input hidden" data-campo="precoConcorrente">
                             <input type="number" id="inputPrecoConcorrente" step="0.01" min="0" placeholder="Digite o preço...">
-                            <button class="btn-save" data-campo="precoConcorrente">
-                                <i class="fas fa-check"></i> Salvar
-                            </button>
-                            <button class="btn-cancel" data-campo="precoConcorrente">
-                                <i class="fas fa-times"></i> Cancelar
-                            </button>
+                            <button class="btn-save" data-campo="precoConcorrente"><i class="fas fa-check"></i> Salvar</button>
+                            <button class="btn-cancel" data-campo="precoConcorrente"><i class="fas fa-times"></i> Cancelar</button>
                         </div>
                     </div>
 
-                    <!-- Observação -->
                     <div class="editable-item" data-campo="observacao">
                         <div class="editable-header">
-                            <span class="editable-label">
-                                <i class="fas fa-comment"></i>
-                                Observação:
-                            </span>
-                            <button class="btn-edit" data-campo="observacao">
-                                <i class="fas fa-edit"></i> Editar
-                            </button>
+                            <span class="editable-label"><i class="fas fa-comment"></i> Observação:</span>
+                            <button class="btn-edit" data-campo="observacao"><i class="fas fa-edit"></i> Editar</button>
                         </div>
                         <div class="editable-value" id="displayObservacao"></div>
                         <div class="editable-input hidden" data-campo="observacao">
                             <textarea id="inputObservacao" rows="3" placeholder="Digite sua observação..."></textarea>
-                            <button class="btn-save" data-campo="observacao">
-                                <i class="fas fa-check"></i> Salvar
-                            </button>
-                            <button class="btn-cancel" data-campo="observacao">
-                                <i class="fas fa-times"></i> Cancelar
-                            </button>
+                            <button class="btn-save" data-campo="observacao"><i class="fas fa-check"></i> Salvar</button>
+                            <button class="btn-cancel" data-campo="observacao"><i class="fas fa-times"></i> Cancelar</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Botão de Enviar Todas Alterações em Lote -->
                 <button id="btnEnviarAlteracoes" class="btn-send-all" style="display: none;" disabled>
-                    <i class="fas fa-upload"></i>
-                    Enviar Alterações
-                    <span class="badge" id="badgeAlteracoes">0</span>
+                    <i class="fas fa-upload"></i> Enviar Alterações <span class="badge" id="badgeAlteracoes">0</span>
                 </button>
-
-                <!-- Informações Adicionais -->
-                <div class="info-grid" style="margin-top: var(--spacing-md);">
-                    <div class="info-item">
-                        <span class="info-label">Tipo de Código</span>
-                        <span id="produtoTipoCodigo" class="info-value"></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Código de Acesso</span>
-                        <span id="produtoCodAcesso" class="info-value"></span>
-                    </div>
-                </div>
             </div>
         </section>
 
-        <!-- Histórico de Leituras -->
         <section class="historico-section">
             <div class="historico-header">
-                <h2>
-                    <i class="fas fa-history"></i>
-                    Histórico de Leituras
-                </h2>
+                <h2><i class="fas fa-history"></i> Histórico de Leituras</h2>
                 <div class="historico-actions">
-                    <button id="btnExportarCSV" class="btn-action" title="Exportar CSV">
-                        <i class="fas fa-file-csv"></i>
-                        CSV
-                    </button>
-                    <button id="btnExportarPDF" class="btn-action" title="Exportar PDF">
-                        <i class="fas fa-file-pdf"></i>
-                        PDF
-                    </button>
-                    <button id="btnLimparHistorico" class="btn-action danger" title="Limpar Histórico">
-                        <i class="fas fa-trash"></i>
-                        Limpar
-                    </button>
+                    <button id="btnExportarCSV" class="btn-action" title="Exportar CSV"><i class="fas fa-file-csv"></i> CSV</button>
+                    <button id="btnExportarPDF" class="btn-action" title="Exportar PDF"><i class="fas fa-file-pdf"></i> PDF</button>
+                    <button id="btnLimparHistorico" class="btn-action danger" title="Limpar Histórico"><i class="fas fa-trash"></i> Limpar</button>
                 </div>
             </div>
-            <div id="historicoLista" class="historico-lista">
-                <!-- Itens do histórico serão adicionados aqui -->
-            </div>
+            <div id="historicoLista" class="historico-lista"></div>
         </section>
     </main>
 
-    <!-- Loading Spinner -->
     <div id="loadingSpinner" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
         <p class="loading-text">Carregando dados...</p>
     </div>
 
-    <!-- Toast Notifications -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Biblioteca html5-qrcode -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     
-    <!-- ============================================= -->
-    <!-- SCRIPTS DO PROJETO - ORDEM CORRETA E CRÍTICA  -->
-    <!-- ============================================= -->
-    
-    <!-- 1º CONFIG - Primeiro e mais importante -->
     <script src="js/config.js"></script>
-    
-    <!-- 2º AUTH - Depende de CONFIG -->
     <script src="js/auth.js"></script>
-    
-    <!-- 3º API - Depende de CONFIG -->
     <script src="js/api.js"></script>
-    
-    <!-- 4º SCANNER - Depende de html5-qrcode -->
     <script src="js/scanner.js"></script>
-    
-    <!-- 5º UI CORE - Depende de API -->
     <script src="js/ui-core.js"></script>
-    
-    <!-- 6º UI LOGIN - Depende de AUTH e UI CORE -->
     <script src="js/ui-login.js"></script>
-    
-    <!-- 7º UI PRODUTO - Depende de API e UI CORE -->
-    <script src="js/ui-produto.js"></script>
-    
-    <!-- 9º MAIN - Último, depende de tudo -->
     <script src="js/main.js"></script>
 </body>
 </html>
