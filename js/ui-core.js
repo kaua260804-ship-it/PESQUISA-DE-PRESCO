@@ -7,8 +7,8 @@ class UI {
     }
 
     initialize() {
-        this.carregarHistorico();
         this.carregarAlteracoes();
+        this.carregarHistorico();
         this.bindEvents();
         this.renderizarHistorico();
         
@@ -19,9 +19,13 @@ class UI {
 
     bindEvents() {
         const inputCodigo = document.getElementById('inputCodigo');
-        if (inputCodigo) inputCodigo.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && inputCodigo.value.trim()) this.processarCodigo(inputCodigo.value.trim());
-        });
+        if (inputCodigo) {
+            inputCodigo.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && inputCodigo.value.trim()) {
+                    this.processarCodigo(inputCodigo.value.trim());
+                }
+            });
+        }
 
         document.getElementById('btnScan')?.addEventListener('click', () => this.toggleScanner());
         document.getElementById('btnStopScan')?.addEventListener('click', () => this.fecharScanner());
@@ -30,6 +34,20 @@ class UI {
         document.getElementById('btnLimparHistorico')?.addEventListener('click', () => this.limparHistorico());
         document.getElementById('btnExportarCSV')?.addEventListener('click', () => this.exportarCSV());
         document.getElementById('btnExportarPDF')?.addEventListener('click', () => this.exportarPDF());
+        
+        // Botão de Refresh (Força ler os XLSX novamente)
+        document.getElementById('btnRefresh')?.addEventListener('click', async () => {
+            this.showLoading(true);
+            try {
+                await api.carregarArvore(true);
+                await api.carregarBase();
+                this.showToast('Dados recarregados!', 'success');
+            } catch(e) {
+                this.showToast('Erro ao recarregar.', 'error');
+            } finally {
+                this.showLoading(false);
+            }
+        });
 
         document.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', () => this.iniciarEdicao(btn.dataset.campo));
@@ -39,7 +57,6 @@ class UI {
             btn.addEventListener('click', () => this.salvarEdicaoLocal(btn.dataset.campo));
         });
 
-        // Busca
         const inputBusca = document.getElementById('inputBusca');
         let buscaTimeout;
         if (inputBusca) {
@@ -51,8 +68,7 @@ class UI {
         }
     }
 
-    // --- EDIÇÃO LOCAL E HISTÓRICO ---
-    
+    // --- EDIÇÃO E HISTÓRICO ---
     carregarAlteracoes() {
         const saved = localStorage.getItem('alteracoes_pendentes');
         this.produtosAlterados = saved ? JSON.parse(saved) : {};
@@ -104,21 +120,20 @@ class UI {
         const novoValor = input.value.trim();
         const seqProd = this.produtoAtual.seqProd;
 
-        // 1. Salva para envio à API
         if (!this.produtosAlterados[seqProd]) this.produtosAlterados[seqProd] = [];
         const pendentes = this.produtosAlterados[seqProd];
         const existente = pendentes.find(p => p.campo === campo);
+        
         if (existente) existente.valor = novoValor;
         else pendentes.push({ campo, valor: novoValor });
+        
         this.salvarAlteracoes();
-
-        // 2. Atualiza na tela e no histórico LOCAL (para o CSV/PDF pegar o valor novo)
         this.produtoAtual[campo] = novoValor;
         this.atualizarHistoricoLocal(seqProd, campo, novoValor);
         
         this.finalizarEdicao(campo);
         this.atualizarDisplayEditaveis(this.produtoAtual);
-        this.showToast('Salvo localmente!', 'success');
+        this.showToast('✅ Salvo localmente!', 'success');
     }
 
     atualizarHistoricoLocal(seqProd, campo, valor) {
@@ -140,36 +155,41 @@ class UI {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
         try {
-            const alteracoesParaAPI = [];
             const arvore = await api.carregarArvore(); 
-            
+            const dadosParaEnviar = [];
+
             for (const seq of seqs) {
                 const info = arvore.map[seq];
                 if (!info) continue;
-                for (const alt of this.produtosAlterados[seq]) {
-                    alteracoesParaAPI.push({ 
-                        seqProd: seq, 
-                        campo: alt.campo, 
-                        valor: alt.valor, 
-                        linha: info.linha 
-                    });
-                }
+                
+                const pendentes = this.produtosAlterados[seq];
+                const getVal = (campo) => {
+                    const p = pendentes.find(x => x.campo === campo);
+                    return p ? p.valor : info[campo];
+                };
+
+                dadosParaEnviar.push({
+                    seqProd: seq,
+                    desc: info.desc,
+                    categoria: info.categoria,
+                    nossoPreco: getVal('nossoPreco'),
+                    precoConcorrente: getVal('precoConcorrente')
+                });
             }
 
-            const res = await api.atualizarLote(alteracoesParaAPI);
+            const res = await api.enviarResultadosLote(dadosParaEnviar);
             
-            this.showToast(`✅ ${res.total} células atualizadas!`, 'success');
+            this.showToast(`✅ ${res.total} produtos enviados para a planilha!`, 'success');
             this.produtosAlterados = {};
             this.salvarAlteracoes();
             
-            // Limpa o histórico de pendências para evitar duplicação visual
             document.querySelectorAll('.editable-item').forEach(el => el.classList.remove('pending'));
 
         } catch (error) {
             this.showToast(`❌ Erro: ${error.message}`, 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-upload"></i> Enviar para Planilha <span class="badge" id="badgeAlteracoes">0</span>`;
+            btn.innerHTML = `<i class="fas fa-upload"></i> Enviar Resultados <span class="badge" id="badgeAlteracoes">0</span>`;
             this.atualizarBotaoEnviar();
         }
     }
@@ -185,7 +205,7 @@ class UI {
         }
     }
 
-    // --- PRODUTO ---
+    // --- BUSCA E PRODUTO ---
     async processarCodigo(codigo) {
         this.showLoading(true);
         try {
@@ -198,7 +218,8 @@ class UI {
                 this.showToast('Produto não encontrado.', 'warning');
             }
         } catch (e) {
-            this.showToast('Erro na busca.', 'error');
+            console.error(e);
+            this.showToast('Erro na busca. Verifique os arquivos XLSX.', 'error');
         } finally {
             this.showLoading(false);
         }
@@ -214,8 +235,12 @@ class UI {
         setTxt('produtoCategoria', produto.categoria);
         setTxt('produtoGrupo', produto.grupo);
         setTxt('produtoSubgrupo', produto.subgrupo);
-        
-        // Junta valores pendentes locais com os da planilha
+
+        this.atualizarDisplayEditaveis(produto);
+        document.getElementById('produtoCard').classList.remove('hidden');
+    }
+
+    atualizarDisplayEditaveis(produto) {
         const pendentes = this.produtosAlterados[produto.seqProd] || [];
         const getVal = (campo) => {
             const p = pendentes.find(x => x.campo === campo);
@@ -226,11 +251,11 @@ class UI {
         const vConc = getVal('precoConcorrente');
         const vObs = getVal('observacao');
 
+        const setTxt = (id, val) => { if(document.getElementById(id)) document.getElementById(id).textContent = val; };
+        
         setTxt('displayNossoPreco', vPreco ? `R$ ${parseFloat(vPreco).toFixed(2)}` : 'Não informado');
         setTxt('displayPrecoConcorrente', vConc ? `R$ ${parseFloat(vConc).toFixed(2)}` : 'Não informado');
         setTxt('displayObservacao', vObs || 'Sem observações');
-
-        document.getElementById('produtoCard').classList.remove('hidden');
     }
 
     // --- HISTÓRICO RENDER & EXPORT ---
@@ -239,7 +264,7 @@ class UI {
         if (!container) return;
         
         if (this.historico.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding: 20px; color: #888;">Nenhum item lido.</div>';
+            container.innerHTML = '<div style="text-align:center; padding: 20px; color: #888;">Nenhum item consultado.</div>';
             return;
         }
 
@@ -274,7 +299,7 @@ class UI {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `historico_${new Date().getTime()}.csv`;
+        link.download = `historico.csv`;
         link.click();
     }
 
@@ -282,7 +307,7 @@ class UI {
         if (this.historico.length === 0) return this.showToast('Vazio', 'warning');
         const win = window.open('', '_blank');
         let html = `<html><head><title>Histórico</title><style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #ccc;padding:10px;text-align:left;} th{background:#6C63FF;color:white;}</style></head><body>`;
-        html += `<h1>Histórico de Leituras</h1><table><tr><th>Data/Hora</th><th>SEQ</th><th>Descrição</th><th>Preço</th><th>Concorrente</th><th>Obs</th></tr>`;
+        html += `<h1>Histórico de Consultas</h1><table><tr><th>Data/Hora</th><th>SEQ</th><th>Descrição</th><th>Preço</th><th>Concorrente</th><th>Obs</th></tr>`;
         this.historico.forEach(item => {
             const d = new Date(item.timestamp);
             const v = item.valoresAtuais;
@@ -328,22 +353,40 @@ class UI {
     scrollParaProduto() {
         setTimeout(() => {
             const el = document.getElementById('produtoCard');
-            window.scrollTo({ top: el.offsetTop - 20, behavior: 'smooth' });
+            if (el) window.scrollTo({ top: el.offsetTop - 20, behavior: 'smooth' });
         }, 100);
     }
 
-    async toggleScanner() { /* Lógica no scanner.js */ }
+    async toggleScanner() {
+        const area = document.getElementById('scannerArea');
+        if (area.classList.contains('hidden')) {
+            try {
+                if (!await scanner.hasCamera()) return this.showToast('Sem câmera', 'error');
+                area.classList.remove('hidden');
+                await scanner.initialize('qr-reader');
+                await scanner.start((codigo) => this.processarCodigo(codigo));
+            } catch (e) {
+                area.classList.add('hidden');
+                this.showToast('Erro na câmera', 'error');
+            }
+        } else {
+            this.fecharScanner();
+        }
+    }
+
     fecharScanner() {
         document.getElementById('scannerArea').classList.add('hidden');
         if(typeof scanner !== 'undefined') scanner.stop();
     }
 
     showLoading(show) {
-        document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        const el = document.getElementById('loadingSpinner');
+        if (el) el.style.display = show ? 'flex' : 'none';
     }
 
     showToast(msg, type) {
         const container = document.getElementById('toastContainer');
+        if (!container) return;
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check' : 'fa-exclamation'}"></i> <span>${msg}</span>`;
