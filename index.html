@@ -26,6 +26,10 @@
         <div class="header-container">
             <h1 class="app-title"><i class="fas fa-barcode"></i> Pesquisa de Preço</h1>
             <div class="header-actions">
+                <!-- Botão do Modo Rápido -->
+                <button id="btnModoRapido" class="btn-action" style="margin-right: 10px; border-color: #FFC400; color: #FFC400;" title="Ativar Modo Rápido">
+                    <i class="fas fa-bolt"></i> Modo Rápido
+                </button>
                 <button id="btnRefresh" class="btn-icon" title="Recarregar Dados Locais"><i class="fas fa-sync-alt"></i></button>
                 <button id="btnLogout" class="btn-icon" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
             </div>
@@ -33,9 +37,9 @@
     </header>
 
     <main class="app-main" id="appMain" style="display: none;">
-        <section class="scanner-section">
+        <section class="scanner-section" id="scannerSection">
             <div class="scanner-container">
-                <div class="manual-input-group">
+                <div class="manual-input-group" id="manualInputGroup">
                     <input type="text" id="inputCodigo" class="codigo-input" placeholder="Digite ou escaneie o código..." autocomplete="off">
                     <button id="btnScan" class="btn-scan"><i class="fas fa-camera"></i> Escanear</button>
                 </div>
@@ -43,7 +47,7 @@
                     <div id="qr-reader" class="qr-reader"></div>
                     <button id="btnStopScan" class="btn-stop-scan"><i class="fas fa-times"></i> Fechar Scanner</button>
                 </div>
-                <div class="search-group">
+                <div class="search-group" id="searchGroup">
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="inputBusca" class="search-input" placeholder="Buscar por descrição...">
                 </div>
@@ -82,7 +86,7 @@
                     </div>
 
                     <!-- Preço Concorrente -->
-                    <div class="editable-item" data-campo="precoConcorrente">
+                    <div class="editable-item" data-campo="precoConcorrente" id="itemPrecoConcorrente">
                         <div class="editable-header">
                             <span class="editable-label"><i class="fas fa-chart-line"></i> Preço Concorrente:</span>
                             <button class="btn-edit" data-campo="precoConcorrente"><i class="fas fa-edit"></i> Editar</button>
@@ -136,7 +140,6 @@
 
     <script src="https://unpkg.com/html5-qrcode"></script>
     
-    <!-- ORDEM DE CARREGAMENTO -->
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
