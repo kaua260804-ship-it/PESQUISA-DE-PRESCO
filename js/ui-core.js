@@ -19,7 +19,6 @@ class UI {
     }
 
     bindEvents() {
-        // Input de Código
         const inputCodigo = document.getElementById('inputCodigo');
         if (inputCodigo) {
             inputCodigo.addEventListener('keydown', (e) => {
@@ -29,7 +28,6 @@ class UI {
             });
         }
 
-        // --- BOTÃO FLUTUANTE (MODO RÁPIDO) ---
         document.getElementById('btnModoRapido')?.addEventListener('click', () => {
             this.modoRapido = !this.modoRapido;
             const btn = document.getElementById('btnModoRapido');
@@ -37,7 +35,7 @@ class UI {
             if (this.modoRapido) {
                 btn.classList.add('active');
                 this.showToast('⚡ Modo Rápido Ativado!', 'success');
-                this.toggleScanner(); // Abre a câmera
+                this.toggleScanner();
             } else {
                 btn.classList.remove('active');
                 this.showToast('Modo Normal Restaurado.', 'info');
@@ -45,7 +43,6 @@ class UI {
             }
         });
 
-        // --- EVENTO PARA FECHAR A BUSCA AO CLICAR FORA ---
         document.addEventListener('click', (e) => {
             const searchResults = document.getElementById('resultadosBusca');
             const searchGroup = document.getElementById('searchGroup');
@@ -56,7 +53,6 @@ class UI {
             }
         });
 
-        // Outros botões
         document.getElementById('btnScan')?.addEventListener('click', () => this.toggleScanner());
         document.getElementById('btnStopScan')?.addEventListener('click', () => this.fecharScanner());
         document.getElementById('btnFecharCard')?.addEventListener('click', () => this.fecharCard());
@@ -65,7 +61,6 @@ class UI {
         document.getElementById('btnExportarCSV')?.addEventListener('click', () => this.exportarCSV());
         document.getElementById('btnExportarPDF')?.addEventListener('click', () => this.exportarPDF());
 
-        // Botão de Refresh
         document.getElementById('btnRefresh')?.addEventListener('click', async () => {
             this.showLoading(true);
             try {
@@ -79,7 +74,6 @@ class UI {
             }
         });
 
-        // Botões de edição
         document.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', () => this.iniciarEdicao(btn.dataset.campo));
         });
@@ -88,7 +82,6 @@ class UI {
             btn.addEventListener('click', () => this.salvarEdicaoLocal(btn.dataset.campo));
         });
 
-        // Input de Busca (com debounce)
         const inputBusca = document.getElementById('inputBusca');
         let buscaTimeout;
         if (inputBusca) {
@@ -100,16 +93,13 @@ class UI {
         }
     }
 
-    // --- PROCESSAMENTO E BUSCA ---
     async processarCodigo(codigo) {
         this.showLoading(true);
         try {
             const codigoLimpo = codigo.trim();
             
-            // Tenta busca exata
             let produto = await api.buscarPorEAN(codigoLimpo) || await api.buscarPorSeq(codigoLimpo);
             
-            // Se não achar, tenta sem os zeros à esquerda
             if (!produto && /^\d+$/.test(codigoLimpo)) {
                 const codigoSemZero = codigoLimpo.replace(/^0+/, '');
                 produto = await api.buscarPorEAN(codigoSemZero) || await api.buscarPorSeq(codigoSemZero);
@@ -120,7 +110,6 @@ class UI {
                 this.adicionarHistorico(produto);
                 this.scrollParaProduto();
                 
-                // Modo Rápido: foca no input de preço do concorrente
                 if (this.modoRapido) {
                     setTimeout(() => {
                         this.iniciarEdicao('precoConcorrente');
@@ -139,7 +128,6 @@ class UI {
         }
     }
 
-    // Busca por descrição
     async buscarProdutos(termo) {
         if (!termo || termo.length < 2) {
             return document.getElementById('resultadosBusca').classList.add('hidden');
@@ -151,7 +139,6 @@ class UI {
         if (res.length === 0) {
             container.innerHTML = '<div style="padding:10px;">Nenhum resultado.</div>';
         } else {
-            // Renderiza os resultados chamando a função global ui.selecionarProdutoBusca
             container.innerHTML = res.map(p => `
                 <div class="search-result-item" onclick="ui.selecionarProdutoBusca('${p.seqProd}')">
                     <strong>${p.seqProd}</strong> - ${p.desc}
@@ -161,14 +148,12 @@ class UI {
         container.classList.remove('hidden');
     }
 
-    // Chamado quando clica em um resultado da busca
     selecionarProdutoBusca(seqProd) {
-        document.getElementById('resultadosBusca').classList.add('hidden'); // Esconde a lista
-        document.getElementById('inputBusca').value = ''; // Limpa o campo
-        this.processarCodigo(seqProd); // Abre o produto
+        document.getElementById('resultadosBusca').classList.add('hidden');
+        document.getElementById('inputBusca').value = '';
+        this.processarCodigo(seqProd);
     }
 
-    // --- SALVAMENTO E ENVIO ---
     salvarEdicaoLocal(campo) {
         if (!this.produtoAtual) return;
         const input = document.getElementById(`input${this.capitalizar(campo)}`);
@@ -189,7 +174,6 @@ class UI {
         this.finalizarEdicao(campo);
         this.atualizarDisplayEditaveis(this.produtoAtual);
         
-        // Se estiver no modo rápido e for o preço do concorrente, envia automaticamente
         if (this.modoRapido && campo === 'precoConcorrente') {
             this.enviarTodasAlteracoes();
         } else {
@@ -236,7 +220,6 @@ class UI {
             this.salvarAlteracoes();
             document.querySelectorAll('.editable-item').forEach(el => el.classList.remove('pending'));
 
-            // Modo Rápido: após enviar, fecha o card e volta para a câmera
             if (this.modoRapido) {
                 this.fecharCard();
                 document.getElementById('inputCodigo').value = '';
@@ -254,7 +237,6 @@ class UI {
         }
     }
 
-    // --- MÉTODOS AUXILIARES ---
     carregarAlteracoes() {
         const saved = localStorage.getItem('alteracoes_pendentes');
         this.produtosAlterados = saved ? JSON.parse(saved) : {};
@@ -277,10 +259,18 @@ class UI {
 
     adicionarHistorico(produto) {
         if (!produto) return;
+        
+        let usuarioLogado = 'Desconhecido';
+        try {
+            const sessao = JSON.parse(sessionStorage.getItem(CONFIG.AUTH.SESSION_KEY));
+            if (sessao && sessao.usuario) usuarioLogado = sessao.usuario;
+        } catch (e) {}
+
         const item = {
             seqProd: produto.seqProd,
             descricao: produto.desc,
             timestamp: new Date().toISOString(),
+            usuario: usuarioLogado,
             valoresAtuais: {
                 nossoPreco: produto.nossoPreco || '',
                 precoConcorrente: produto.precoConcorrente || '',
@@ -367,12 +357,16 @@ class UI {
             if (v.nossoPreco) valoresStr.push(`💰 R$ ${v.nossoPreco}`);
             if (v.precoConcorrente) valoresStr.push(`🏷️ R$ ${v.precoConcorrente}`);
             
+            const infoUsuario = item.usuario ? ` | 👤 ${item.usuario}` : '';
+            
             return `
                 <div class="historico-item" onclick="ui.processarCodigo('${item.seqProd}')">
                     <div class="produto-info">
                         <div class="produto-codigo">${item.seqProd}</div>
                         <div class="produto-descricao">${item.descricao}</div>
-                        <div style="font-size: 0.75rem; color: #666;">${valoresStr.join(' | ')}</div>
+                        <div style="font-size: 0.75rem; color: #666;">
+                            ${valoresStr.join(' | ')} ${infoUsuario}
+                        </div>
                     </div>
                     <div class="produto-hora">${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR')}</div>
                 </div>
@@ -382,11 +376,11 @@ class UI {
 
     exportarCSV() {
         if (this.historico.length === 0) return this.showToast('Vazio', 'warning');
-        let csv = '\uFEFFData;Hora;SEQ;Descrição;Nosso Preço;Concorrente;Observação\n';
+        let csv = '\uFEFFData;Hora;SEQ;Descrição;Nosso Preço;Concorrente;Observação;Usuario\n';
         this.historico.forEach(item => {
             const d = new Date(item.timestamp);
             const v = item.valoresAtuais;
-            csv += `${d.toLocaleDateString('pt-BR')};${d.toLocaleTimeString('pt-BR')};${item.seqProd};${item.descricao};${v.nossoPreco};${v.precoConcorrente};${v.observacao}\n`;
+            csv += `${d.toLocaleDateString('pt-BR')};${d.toLocaleTimeString('pt-BR')};${item.seqProd};${item.descricao};${v.nossoPreco};${v.precoConcorrente};${v.observacao};${item.usuario || ''}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -399,11 +393,11 @@ class UI {
         if (this.historico.length === 0) return this.showToast('Vazio', 'warning');
         const win = window.open('', '_blank');
         let html = `<html><head><title>Histórico</title><style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #ccc;padding:10px;text-align:left;} th{background:#6C63FF;color:white;}</style></head><body>`;
-        html += `<h1>Histórico de Consultas</h1><table><tr><th>Data/Hora</th><th>SEQ</th><th>Descrição</th><th>Preço</th><th>Concorrente</th><th>Obs</th></tr>`;
+        html += `<h1>Histórico de Consultas</h1><table><tr><th>Data/Hora</th><th>SEQ</th><th>Descrição</th><th>Preço</th><th>Concorrente</th><th>Obs</th><th>Usuário</th></tr>`;
         this.historico.forEach(item => {
             const d = new Date(item.timestamp);
             const v = item.valoresAtuais;
-            html += `<tr><td>${d.toLocaleString('pt-BR')}</td><td>${item.seqProd}</td><td>${item.descricao}</td><td>${v.nossoPreco}</td><td>${v.precoConcorrente}</td><td>${v.observacao}</td></tr>`;
+            html += `<tr><td>${d.toLocaleString('pt-BR')}</td><td>${item.seqProd}</td><td>${item.descricao}</td><td>${v.nossoPreco}</td><td>${v.precoConcorrente}</td><td>${v.observacao}</td><td>${item.usuario || ''}</td></tr>`;
         });
         html += `</table><script>window.print();</script></body></html>`;
         win.document.write(html);
