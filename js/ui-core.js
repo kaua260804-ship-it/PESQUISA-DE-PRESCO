@@ -4,6 +4,7 @@ class UI {
         this.produtoAtual = null;
         this.isEditando = false;
         this.produtosAlterados = {};
+        this.modoRapido = false; // Controle do Modo Rápido
     }
 
     initialize() {
@@ -27,6 +28,24 @@ class UI {
             });
         }
 
+        // --- LÓGICA DO MODO RÁPIDO ---
+        document.getElementById('btnModoRapido')?.addEventListener('click', () => {
+            this.modoRapido = !this.modoRapido;
+            const btn = document.getElementById('btnModoRapido');
+            
+            if (this.modoRapido) {
+                btn.style.backgroundColor = '#FFC400';
+                btn.style.color = '#1A1A2E';
+                this.showToast('⚡ Modo Rápido Ativado!', 'success');
+                this.toggleScanner(); // Abre a câmera na hora
+            } else {
+                btn.style.backgroundColor = 'transparent';
+                btn.style.color = '#FFC400';
+                this.showToast('Modo Normal Restaurado.', 'info');
+                this.fecharScanner();
+            }
+        });
+
         document.getElementById('btnScan')?.addEventListener('click', () => this.toggleScanner());
         document.getElementById('btnStopScan')?.addEventListener('click', () => this.fecharScanner());
         document.getElementById('btnFecharCard')?.addEventListener('click', () => this.fecharCard());
@@ -34,8 +53,7 @@ class UI {
         document.getElementById('btnLimparHistorico')?.addEventListener('click', () => this.limparHistorico());
         document.getElementById('btnExportarCSV')?.addEventListener('click', () => this.exportarCSV());
         document.getElementById('btnExportarPDF')?.addEventListener('click', () => this.exportarPDF());
-        
-        // Botão de Refresh (Força ler os XLSX novamente)
+
         document.getElementById('btnRefresh')?.addEventListener('click', async () => {
             this.showLoading(true);
             try {
@@ -68,7 +86,135 @@ class UI {
         }
     }
 
-    // --- EDIÇÃO E HISTÓRICO ---
+    // --- PROCESSAMENTO (COM FLEXIBILIDADE DE ZEROS) ---
+    async processarCodigo(codigo) {
+        this.showLoading(true);
+        try {
+            const codigoLimpo = codigo.trim();
+            
+            // Tenta busca exata (EAN ou SEQ)
+            let produto = await api.buscarPorEAN(codigoLimpo) || await api.buscarPorSeq(codigoLimpo);
+            
+            // SE NÃO ACHOU E O CÓDIGO É SÓ NÚMEROS, TENTA REMOVER OS ZEROS À ESQUERDA
+            if (!produto && /^\d+$/.test(codigoLimpo)) {
+                const codigoSemZero = codigoLimpo.replace(/^0+/, '');
+                console.log(`🔄 Tentando busca sem zeros à esquerda: ${codigoSemZero}`);
+                produto = await api.buscarPorEAN(codigoSemZero) || await api.buscarPorSeq(codigoSemZero);
+            }
+
+            if (produto) {
+                this.exibirProduto(produto);
+                this.adicionarHistorico(produto);
+                this.scrollParaProduto();
+                
+                // SE O MODO RÁPIDO ESTIVER ATIVO, JÁ FOÇA A EDIÇÃO DO PREÇO CONCORRENTE
+                if (this.modoRapido) {
+                    setTimeout(() => {
+                        this.iniciarEdicao('precoConcorrente');
+                        document.getElementById('inputPrecoConcorrente').focus();
+                    }, 300);
+                }
+            } else {
+                this.showToast('Produto não encontrado.', 'warning');
+                if (this.modoRapido) {
+                    this.toggleScanner(); // Reabre a câmera para tentar de novo
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            this.showToast('Erro na busca.', 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    // --- SALVAMENTO E ENVIO NO MODO RÁPIDO ---
+    salvarEdicaoLocal(campo) {
+        if (!this.produtoAtual) return;
+        const input = document.getElementById(`input${this.capitalizar(campo)}`);
+        const novoValor = input.value.trim();
+        const seqProd = this.produtoAtual.seqProd;
+
+        if (!this.produtosAlterados[seqProd]) this.produtosAlterados[seqProd] = [];
+        const pendentes = this.produtosAlterados[seqProd];
+        const existente = pendentes.find(p => p.campo === campo);
+        
+        if (existente) existente.valor = novoValor;
+        else pendentes.push({ campo, valor: novoValor });
+        
+        this.salvarAlteracoes();
+        this.produtoAtual[campo] = novoValor;
+        this.atualizarHistoricoLocal(seqProd, campo, novoValor);
+        
+        this.finalizarEdicao(campo);
+        this.atualizarDisplayEditaveis(this.produtoAtual);
+        
+        // Se estiver no modo rápido e o campo for o Preço Concorrente, envia automaticamente
+        if (this.modoRapido && campo === 'precoConcorrente') {
+            this.enviarTodasAlteracoes();
+        } else {
+            this.showToast('✅ Salvo localmente!', 'success');
+        }
+    }
+
+    async enviarTodasAlteracoes() {
+        const seqs = Object.keys(this.produtosAlterados);
+        if (seqs.length === 0) return;
+
+        const btn = document.getElementById('btnEnviarAlteracoes');
+        const textoOriginal = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+        try {
+            const arvore = await api.carregarArvore(); 
+            const dadosParaEnviar = [];
+
+            for (const seq of seqs) {
+                const info = arvore.map[seq];
+                if (!info) continue;
+                
+                const pendentes = this.produtosAlterados[seq];
+                const getVal = (campo) => {
+                    const p = pendentes.find(x => x.campo === campo);
+                    return p ? p.valor : info[campo];
+                };
+
+                dadosParaEnviar.push({
+                    seqProd: seq,
+                    desc: info.desc,
+                    categoria: info.categoria,
+                    nossoPreco: getVal('nossoPreco'),
+                    precoConcorrente: getVal('precoConcorrente')
+                });
+            }
+
+            const res = await api.enviarResultadosLote(dadosParaEnviar);
+            
+            this.showToast(`✅ Enviado para a planilha!`, 'success');
+            this.produtosAlterados = {};
+            this.salvarAlteracoes();
+            document.querySelectorAll('.editable-item').forEach(el => el.classList.remove('pending'));
+
+            // FLUXO DO MODO RÁPIDO: Após enviar, limpa a tela e abre a câmera novamente
+            if (this.modoRapido) {
+                this.fecharCard();
+                document.getElementById('inputCodigo').value = '';
+                setTimeout(() => {
+                    this.toggleScanner();
+                }, 500);
+            }
+
+        } catch (error) {
+            this.showToast(`❌ Erro: ${error.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+            this.atualizarBotaoEnviar();
+        }
+    }
+
+    // --- MÉTODOS AUXILIARES (MANTIDOS) ---
     carregarAlteracoes() {
         const saved = localStorage.getItem('alteracoes_pendentes');
         this.produtosAlterados = saved ? JSON.parse(saved) : {};
@@ -114,83 +260,12 @@ class UI {
         this.renderizarHistorico();
     }
 
-    salvarEdicaoLocal(campo) {
-        if (!this.produtoAtual) return;
-        const input = document.getElementById(`input${this.capitalizar(campo)}`);
-        const novoValor = input.value.trim();
-        const seqProd = this.produtoAtual.seqProd;
-
-        if (!this.produtosAlterados[seqProd]) this.produtosAlterados[seqProd] = [];
-        const pendentes = this.produtosAlterados[seqProd];
-        const existente = pendentes.find(p => p.campo === campo);
-        
-        if (existente) existente.valor = novoValor;
-        else pendentes.push({ campo, valor: novoValor });
-        
-        this.salvarAlteracoes();
-        this.produtoAtual[campo] = novoValor;
-        this.atualizarHistoricoLocal(seqProd, campo, novoValor);
-        
-        this.finalizarEdicao(campo);
-        this.atualizarDisplayEditaveis(this.produtoAtual);
-        this.showToast('✅ Salvo localmente!', 'success');
-    }
-
     atualizarHistoricoLocal(seqProd, campo, valor) {
         const idx = this.historico.findIndex(h => h.seqProd === seqProd);
         if (idx > -1) {
             this.historico[idx].valoresAtuais[campo] = valor;
             this.salvarHistorico();
             this.renderizarHistorico();
-        }
-    }
-
-    // --- ENVIO EM LOTE ---
-    async enviarTodasAlteracoes() {
-        const seqs = Object.keys(this.produtosAlterados);
-        if (seqs.length === 0) return;
-
-        const btn = document.getElementById('btnEnviarAlteracoes');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-
-        try {
-            const arvore = await api.carregarArvore(); 
-            const dadosParaEnviar = [];
-
-            for (const seq of seqs) {
-                const info = arvore.map[seq];
-                if (!info) continue;
-                
-                const pendentes = this.produtosAlterados[seq];
-                const getVal = (campo) => {
-                    const p = pendentes.find(x => x.campo === campo);
-                    return p ? p.valor : info[campo];
-                };
-
-                dadosParaEnviar.push({
-                    seqProd: seq,
-                    desc: info.desc,
-                    categoria: info.categoria,
-                    nossoPreco: getVal('nossoPreco'),
-                    precoConcorrente: getVal('precoConcorrente')
-                });
-            }
-
-            const res = await api.enviarResultadosLote(dadosParaEnviar);
-            
-            this.showToast(`✅ ${res.total} produtos enviados para a planilha!`, 'success');
-            this.produtosAlterados = {};
-            this.salvarAlteracoes();
-            
-            document.querySelectorAll('.editable-item').forEach(el => el.classList.remove('pending'));
-
-        } catch (error) {
-            this.showToast(`❌ Erro: ${error.message}`, 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-upload"></i> Enviar Resultados <span class="badge" id="badgeAlteracoes">0</span>`;
-            this.atualizarBotaoEnviar();
         }
     }
 
@@ -205,29 +280,8 @@ class UI {
         }
     }
 
-    // --- BUSCA E PRODUTO ---
-    async processarCodigo(codigo) {
-        this.showLoading(true);
-        try {
-            let produto = await api.buscarPorEAN(codigo) || await api.buscarPorSeq(codigo);
-            if (produto) {
-                this.exibirProduto(produto);
-                this.adicionarHistorico(produto);
-                this.scrollParaProduto();
-            } else {
-                this.showToast('Produto não encontrado.', 'warning');
-            }
-        } catch (e) {
-            console.error(e);
-            this.showToast('Erro na busca. Verifique os arquivos XLSX.', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
     exibirProduto(produto) {
         this.produtoAtual = produto;
-        
         const setTxt = (id, val) => { if(document.getElementById(id)) document.getElementById(id).textContent = val || '-'; };
         setTxt('produtoCodigo', produto.seqProd);
         setTxt('produtoDescricao', produto.desc);
@@ -252,13 +306,11 @@ class UI {
         const vObs = getVal('observacao');
 
         const setTxt = (id, val) => { if(document.getElementById(id)) document.getElementById(id).textContent = val; };
-        
         setTxt('displayNossoPreco', vPreco ? `R$ ${parseFloat(vPreco).toFixed(2)}` : 'Não informado');
         setTxt('displayPrecoConcorrente', vConc ? `R$ ${parseFloat(vConc).toFixed(2)}` : 'Não informado');
         setTxt('displayObservacao', vObs || 'Sem observações');
     }
 
-    // --- HISTÓRICO RENDER & EXPORT ---
     renderizarHistorico() {
         const container = document.getElementById('historicoLista');
         if (!container) return;
@@ -326,7 +378,6 @@ class UI {
         }
     }
 
-    // --- AUXILIARES ---
     iniciarEdicao(campo) {
         if (this.isEditando) return;
         this.isEditando = true;
