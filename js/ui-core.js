@@ -4,7 +4,7 @@ class UI {
         this.produtoAtual = null;
         this.isEditando = false;
         this.produtosAlterados = {};
-        this.modoRapido = false; // Controle do Modo Rápido
+        this.modoRapido = false;
     }
 
     initialize() {
@@ -19,6 +19,7 @@ class UI {
     }
 
     bindEvents() {
+        // Input de Código
         const inputCodigo = document.getElementById('inputCodigo');
         if (inputCodigo) {
             inputCodigo.addEventListener('keydown', (e) => {
@@ -28,24 +29,34 @@ class UI {
             });
         }
 
-        // --- LÓGICA DO MODO RÁPIDO ---
+        // --- BOTÃO FLUTUANTE (MODO RÁPIDO) ---
         document.getElementById('btnModoRapido')?.addEventListener('click', () => {
             this.modoRapido = !this.modoRapido;
             const btn = document.getElementById('btnModoRapido');
             
             if (this.modoRapido) {
-                btn.style.backgroundColor = '#FFC400';
-                btn.style.color = '#1A1A2E';
+                btn.classList.add('active');
                 this.showToast('⚡ Modo Rápido Ativado!', 'success');
-                this.toggleScanner(); // Abre a câmera na hora
+                this.toggleScanner(); // Abre a câmera
             } else {
-                btn.style.backgroundColor = 'transparent';
-                btn.style.color = '#FFC400';
+                btn.classList.remove('active');
                 this.showToast('Modo Normal Restaurado.', 'info');
                 this.fecharScanner();
             }
         });
 
+        // --- EVENTO PARA FECHAR A BUSCA AO CLICAR FORA ---
+        document.addEventListener('click', (e) => {
+            const searchResults = document.getElementById('resultadosBusca');
+            const searchGroup = document.getElementById('searchGroup');
+            
+            if (searchResults && searchGroup && 
+                !searchGroup.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.add('hidden');
+            }
+        });
+
+        // Outros botões
         document.getElementById('btnScan')?.addEventListener('click', () => this.toggleScanner());
         document.getElementById('btnStopScan')?.addEventListener('click', () => this.fecharScanner());
         document.getElementById('btnFecharCard')?.addEventListener('click', () => this.fecharCard());
@@ -54,6 +65,7 @@ class UI {
         document.getElementById('btnExportarCSV')?.addEventListener('click', () => this.exportarCSV());
         document.getElementById('btnExportarPDF')?.addEventListener('click', () => this.exportarPDF());
 
+        // Botão de Refresh
         document.getElementById('btnRefresh')?.addEventListener('click', async () => {
             this.showLoading(true);
             try {
@@ -67,6 +79,7 @@ class UI {
             }
         });
 
+        // Botões de edição
         document.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', () => this.iniciarEdicao(btn.dataset.campo));
         });
@@ -75,6 +88,7 @@ class UI {
             btn.addEventListener('click', () => this.salvarEdicaoLocal(btn.dataset.campo));
         });
 
+        // Input de Busca (com debounce)
         const inputBusca = document.getElementById('inputBusca');
         let buscaTimeout;
         if (inputBusca) {
@@ -86,19 +100,18 @@ class UI {
         }
     }
 
-    // --- PROCESSAMENTO (COM FLEXIBILIDADE DE ZEROS) ---
+    // --- PROCESSAMENTO E BUSCA ---
     async processarCodigo(codigo) {
         this.showLoading(true);
         try {
             const codigoLimpo = codigo.trim();
             
-            // Tenta busca exata (EAN ou SEQ)
+            // Tenta busca exata
             let produto = await api.buscarPorEAN(codigoLimpo) || await api.buscarPorSeq(codigoLimpo);
             
-            // SE NÃO ACHOU E O CÓDIGO É SÓ NÚMEROS, TENTA REMOVER OS ZEROS À ESQUERDA
+            // Se não achar, tenta sem os zeros à esquerda
             if (!produto && /^\d+$/.test(codigoLimpo)) {
                 const codigoSemZero = codigoLimpo.replace(/^0+/, '');
-                console.log(`🔄 Tentando busca sem zeros à esquerda: ${codigoSemZero}`);
                 produto = await api.buscarPorEAN(codigoSemZero) || await api.buscarPorSeq(codigoSemZero);
             }
 
@@ -107,7 +120,7 @@ class UI {
                 this.adicionarHistorico(produto);
                 this.scrollParaProduto();
                 
-                // SE O MODO RÁPIDO ESTIVER ATIVO, JÁ FOÇA A EDIÇÃO DO PREÇO CONCORRENTE
+                // Modo Rápido: foca no input de preço do concorrente
                 if (this.modoRapido) {
                     setTimeout(() => {
                         this.iniciarEdicao('precoConcorrente');
@@ -116,9 +129,7 @@ class UI {
                 }
             } else {
                 this.showToast('Produto não encontrado.', 'warning');
-                if (this.modoRapido) {
-                    this.toggleScanner(); // Reabre a câmera para tentar de novo
-                }
+                if (this.modoRapido) this.toggleScanner();
             }
         } catch (e) {
             console.error(e);
@@ -128,7 +139,36 @@ class UI {
         }
     }
 
-    // --- SALVAMENTO E ENVIO NO MODO RÁPIDO ---
+    // Busca por descrição
+    async buscarProdutos(termo) {
+        if (!termo || termo.length < 2) {
+            return document.getElementById('resultadosBusca').classList.add('hidden');
+        }
+        
+        const res = await api.buscarPorDescricao(termo);
+        const container = document.getElementById('resultadosBusca');
+        
+        if (res.length === 0) {
+            container.innerHTML = '<div style="padding:10px;">Nenhum resultado.</div>';
+        } else {
+            // Renderiza os resultados chamando a função global ui.selecionarProdutoBusca
+            container.innerHTML = res.map(p => `
+                <div class="search-result-item" onclick="ui.selecionarProdutoBusca('${p.seqProd}')">
+                    <strong>${p.seqProd}</strong> - ${p.desc}
+                </div>
+            `).join('');
+        }
+        container.classList.remove('hidden');
+    }
+
+    // Chamado quando clica em um resultado da busca
+    selecionarProdutoBusca(seqProd) {
+        document.getElementById('resultadosBusca').classList.add('hidden'); // Esconde a lista
+        document.getElementById('inputBusca').value = ''; // Limpa o campo
+        this.processarCodigo(seqProd); // Abre o produto
+    }
+
+    // --- SALVAMENTO E ENVIO ---
     salvarEdicaoLocal(campo) {
         if (!this.produtoAtual) return;
         const input = document.getElementById(`input${this.capitalizar(campo)}`);
@@ -149,7 +189,7 @@ class UI {
         this.finalizarEdicao(campo);
         this.atualizarDisplayEditaveis(this.produtoAtual);
         
-        // Se estiver no modo rápido e o campo for o Preço Concorrente, envia automaticamente
+        // Se estiver no modo rápido e for o preço do concorrente, envia automaticamente
         if (this.modoRapido && campo === 'precoConcorrente') {
             this.enviarTodasAlteracoes();
         } else {
@@ -196,7 +236,7 @@ class UI {
             this.salvarAlteracoes();
             document.querySelectorAll('.editable-item').forEach(el => el.classList.remove('pending'));
 
-            // FLUXO DO MODO RÁPIDO: Após enviar, limpa a tela e abre a câmera novamente
+            // Modo Rápido: após enviar, fecha o card e volta para a câmera
             if (this.modoRapido) {
                 this.fecharCard();
                 document.getElementById('inputCodigo').value = '';
@@ -214,7 +254,7 @@ class UI {
         }
     }
 
-    // --- MÉTODOS AUXILIARES (MANTIDOS) ---
+    // --- MÉTODOS AUXILIARES ---
     carregarAlteracoes() {
         const saved = localStorage.getItem('alteracoes_pendentes');
         this.produtosAlterados = saved ? JSON.parse(saved) : {};
@@ -442,26 +482,10 @@ class UI {
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check' : 'fa-exclamation'}"></i> <span>${msg}</span>`;
         container.appendChild(toast);
-        setTimeout(() => toast.remove(), CONFIG.TOAST_DURATION || 3000);
+        setTimeout(() => toast.remove(), 3000);
     }
 
     capitalizar(t) { return t ? t.charAt(0).toUpperCase() + t.slice(1) : ''; }
-    
-    async buscarProdutos(termo) {
-        if (!termo || termo.length < 2) return document.getElementById('resultadosBusca').classList.add('hidden');
-        const res = await api.buscarPorDescricao(termo);
-        const container = document.getElementById('resultadosBusca');
-        if (res.length === 0) {
-            container.innerHTML = '<div style="padding:10px;">Nenhum resultado.</div>';
-        } else {
-            container.innerHTML = res.map(p => `
-                <div class="search-result-item" onclick="ui.processarCodigo('${p.seqProd}')">
-                    <strong>${p.seqProd}</strong> - ${p.desc}
-                </div>
-            `).join('');
-        }
-        container.classList.remove('hidden');
-    }
 }
 
 const ui = new UI();
